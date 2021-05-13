@@ -1,0 +1,65 @@
+ trial50
+
+                MOLALITY          ACT. COEFF.           ACTIVITY
+
+na             0.849967E-01        0.761280            0.647062E-01
+k              0.332136E-02        0.755315            0.250867E-02
+ca             0.838292E-03        0.353482            0.296321E-03
+mg             0.781682E-03        0.316874            0.247695E-03
+cl             0.397557E-01        0.765361            0.304275E-01
+h              0.993645E-09        0.754690            0.749894E-09
+hco3           0.366856E-01        0.741533            0.272035E-01
+oh             0.871706E-04        0.754698            0.657874E-04
+co3            0.751677E-02        0.316030            0.237553E-02
+co2            0.383370E-04         1.01769            0.390151E-04
+caco3          0.187919E-02         1.00000            0.187919E-02
+mgco3          0.522759E-03         1.00000            0.522759E-03
+mgoh           0.397466E-05        0.788101            0.313243E-05
+
+ ELECTRICAL BALANCE     =   0.104438640     % corrected on na and hco3
+ TOTAL DISSOLVED SOLIDS =    6.47305870     g/kg(H2O)
+ MOLAL/MOLAR FACTOR     =   0.993568599    
+ DENSITY                =    1.00000000    
+ IONIC STRENGTH         =   0.100698687    
+ WATER ACTIVITY         =   0.997150064    
+ INITIAL LOG PCO2       =    7.42571652E-02
+ INITIAL pH             =    6.55000019    
+ CALCULATED LOG PCO2    =   -2.69659710    
+ CALCULATED pH          =    9.12500000    
+ CARBONATE ALKALINITY   =    5.65229766E-02
+ BORATE ALKALINITY      =    0.00000000    
+ SILICATE ALKALINITY    =    0.00000000    
+ OH ALKALINITY          =    9.11452371E-05
+ H ALKALINITY           =   -9.93644944E-10
+ TOTAL ALKALINITY       =  0.566141E-01          init. alk. =  0.566141E-01
+
+                    SOLUB. PROD.       ION. ACT. PROD.      SATUR. RATIO
+
+ANTARCTICITE         16932.0            0.269686E-06        0.159276E-10
+ARAGONITE           0.356249E-08        0.703919E-06         197.592    
+ARTINITE            0.257014E-18        0.625405E-18         2.43335    
+BISCHOFITE           17781.7            0.225430E-06        0.126777E-10
+BRUCITE             0.101005E-10        0.107202E-11        0.106136    
+CALCITE             0.230057E-08        0.703919E-06         305.975    
+CARNALLITE           25698.8            0.172077E-10        0.669592E-15
+CHLOROMAGNESITE     0.765326E+20        0.229324E-06        0.299642E-26
+DOLOMITE            0.212879E-17        0.414190E-12         194566.    
+GAYLUSSITE          0.384607E-09        0.690204E-11        0.179457E-01
+HALITE               39.7828            0.196885E-02        0.494899E-04
+HUNTITE             0.382310E-32        0.143401E-24        0.375092E+08
+HYDROMAGNESITE      0.194399E-39        0.127044E-36         653.519    
+HYDROPHYLITE        0.697952E+11        0.274344E-06        0.393069E-17
+IKAITE              0.825339E-06        0.691968E-06        0.838405    
+KALICINITE           10.2797            0.682448E-04        0.663882E-05
+MAGNESITE           0.480315E-08        0.588406E-06         122.504    
+NAHCOLITE           0.683529            0.176024E-02        0.257522E-02
+NATRON               1.42395            0.966623E-05        0.678834E-05
+NESQUEHONITE        0.286315E-05        0.583389E-06        0.203758    
+NORTHUPITE          0.323498E-04        0.115223E-13        0.356180E-09
+PIRSSONITE          0.280158E-09        0.696139E-11        0.248480E-01
+PORTLANDITE         0.340743E-05        0.128247E-11        0.376376E-06
+SYLVITE              12.6791            0.763326E-04        0.602033E-05
+TACHYHYDRITE        0.142745E+17        0.139418E-19        0.976696E-36
+THERMONATRITE        1.55478            0.991774E-05        0.637887E-05
+TRONA               0.216663            0.174078E-07        0.803451E-07
+VATERITE            0.709825E-08        0.703919E-06         99.1680    
