@@ -762,9 +762,9 @@ while nw != 0:
     m0_S = ""
     for k in range(0, nm):
         if lmin[k] == 1:
-            m0_S = "_".join(m0_S, mineral_S[k]
+            m0_S = "_".join(m0_S, mineral_S[k])
     for i in range(0, n+1):
-    gact1[i] = gact[i]
+        gact1[i] = gact[i]
     
     actp()
     
@@ -811,7 +811,7 @@ while nw != 0:
         if nminer == 0:
             print(ncmpt, "No_minerals", sep=" ")
         else:
-            print(ncmpt, "_".join(mineraux_S)
+            print(ncmpt, "_".join(mineraux_S))
     
     if (mwev > 0. and fc != 1. and nminer - nminer0 >= 2):
         xi = xi / 2
@@ -824,3 +824,79 @@ while nw != 0:
                     file.write(text)
                     file.close()
 """ LINE 455 """
+
+
+# Compact function
+def compact(lmin):
+    global lmin, fc, q_min
+    
+    q_min = np.empty(nm+1, dtype=np.object)
+    
+    print("Compacting mineral file")
+    
+    for i in range(0, nm):
+        lmin[i] = 0
+    
+    nbmin_comp = 0
+    
+    with open(molemin_S, 'r+') as file:
+        text = file.read()
+        file.close()
+    text = text.split(',')
+    for i in range(1, len(text)):
+        q_min[i] = text[i]
+
+
+# densite function
+def densite():
+    global dens
+    
+    ncdens, nadens = 5, 5
+    
+    s = np.zeros((ncdens, nadens))
+    cat, ani = np.zeros(ncdens), np.zeros(nadens)
+    ic, ia = np.zeros(ncdens), np.zeros(nadens)
+    
+    for i in range(0, 8):
+        if i+1 <= ncdens:
+            cat[i] = mol[i+1] / mol[11] * mh2o
+        if i+1 > ncdens:
+            ani[i-ncdens] = mol[i+1] / mol[11] * mh2o
+    
+    ani[3] = mol[15] / mol[11] * mh2o
+    ani[4] = mol[14] / mol[11] * mh2o
+    
+    for i in range(0, ncdens):
+        ic[i] = nch[i+1]
+    for i in range(0, 3):
+        ia[i] = -nch[i+6]
+    
+    if ncpt == 1:
+        au = np.zeros((ncdens, nadens))
+        bu = np.zeros((ncdens, nadens))
+        
+        with open("densite", 'r+') as file:
+            text = file.read()
+            file.close()
+        values = [line.split(',') for line in text.split('\n')]
+        
+        index = 0
+        for i in range(0, 5):
+            for j in range(0, 5):
+                au[i, j] = float(values[index][3])
+                bu[i, j] = float(values[index][4])
+                index += 1
+        
+    dens = 1.
+    u = 0.
+    
+    for j in range(0, nadens):
+        u = u + ani[j] * ia[j]
+    for i in range(0, ncdens):
+        for j in range(0, nadens):
+            s[i, j] = int((ic[i] + ia[j]) / 2) * cat[i] * ani[j] / u
+            dens = dens + au[i, j] * s[i, j] + bu[i, j] * s[i, j] ** 2
+
+
+                
+# Stop simulation function
