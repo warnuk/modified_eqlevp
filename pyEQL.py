@@ -23,7 +23,6 @@ conversion to Python 3: W. ARNUK
 import pandas as pd
 import numpy as np
 from datetime import datetime
-from mpmath import *
 
 n = 25
 ntot = 12
@@ -35,13 +34,11 @@ print("\nThis is EQL..............\n")
 print(datetime.now().strftime("%a %b %d %H:%M:%S %Y"), '\n')
 
 repinit_S, fich_S, molemin_S, fichmin_S = ".", ".", ".", "."
-pk, pk0, pkf, pkstd, dph, dil, diltot = .1e0, .1e0, .0001e0, .1e0, .2e0, 0., 1.
-mh2o, pco2_S, nconv, eps = 55.51e0, "", 2, 1e-12
 nchcat, nchani = 0, 0
 
 
 kmat = np.zeros((n+1, n+1))
-ica = np.zeros(n+1)
+
 
 aqu = pd.read_csv("aqu.dat", header=None)
 aq_S = aqu.iloc[:,0].values.astype(str)
@@ -182,6 +179,8 @@ class Water:
         self.tot[11] = 10 ** -ph
         self.tot[12] = self.alk / 1000
         
+        self.ndepact = 0
+        
         self.nminer = np.count_nonzero(self.tot[1:11])
         
         self.charge_balance()
@@ -212,10 +211,46 @@ class Water:
         self.calculate_molalities()
         
         self.gact = np.zeros(n+1)
+        self.ica = np.zeros(n+1)
+        self.z = np.zeros((n+1, n+1))
+        self.zz = np.zeros(n+1)
+        self.xx = np.zeros(n+1)
+        self.cat = np.zeros(max_cat+1)
+        self.nchcat = np.zeros(max_cat+1)
+        self.ani = np.zeros(max_an+1)
+        self.nchani = np.zeros(max_an+1)
+        self.nconv = 0
+        self.pk = .1e0
+        self.pk0 = .1e0
+        self.pkf = .0001e0
+        self.pkstd = .1e0
+        self.dph = .2e0
+        self.dil = 0
+        self.diltot = 1
         
-        self.ndepact = 0
-        self.z = np.zeros((n, n))
-        self.zz = np.zeros(n)
+    def temperature(self, at, bt, ct, dt, et):
+        return((at + bt * self.temp + ct * self.temp ** 2 + 
+                dt * self.temp ** 3 + et * self.temp ** 4))
+    
+    def j0(self, x):
+        ya, yb, yc, yd = 4.581, -0.7237, -0.012, 0.528
+        j0 = x / (4. + ya * x ** yb * np.exp(yc * x ** yd))
+        return(j0)
+            
+    def j1(self, x):
+        ya, yb, yc, yd = 4.581, -0.7237, -0.012, 0.528
+        j1 = ((4. + ya * x ** yb * (1. - yb - yc * yd * x ** yd) * 
+          np.exp(yc * x ** yd)) / (4. + ya * x ** yb * 
+                                   np.exp(yc * x ** yd)) ** 2)
+        return(j1)
+    
+    def g0(self, x):
+        g0 = 2. * (1. - (1. + x) * np.exp(-x)) / x ** 2
+        return(g0)
+            
+    def g1(self, x):
+        g1 = -2. * (1. - (1. + x + x ** 2 / 2.) * np.exp(-x)) / x ** 2
+        return(g1)
     
     def charge_balance(self):
         cat = np.array(np.where(nch[1:ntot+1] > 0)).flatten() + 1
@@ -257,7 +292,8 @@ class Water:
             u = xu
             
             eq = a * xu + b * xu ** 3 + c * xu ** 4
-            while (200 * abs(eq - self.tot[9]) / (eq + self.tot[9]) >= pk):
+            while (200 * abs(eq - self.tot[9]) / 
+                   (eq + self.tot[9]) >= self.pk):
                 u = u / 2
                 if eq > self.tot[9]:
                     xu = xu - u
@@ -333,14 +369,14 @@ class Water:
             self.molal[np.delete(np.arange(0, n), 10)] = (ee * 
                                 self.molal[np.delete(np.arange(0, n), 10)])
         elif self.unit_S == "molal":
-            ee = 1
+            self.ee = 1
         
-        self.stdi = s * ee
+        self.stdi = s * self.ee
     
     def actp(self):
-        c = np.arange(0, 10)
-        a = np.arange(0, 12)
-        h = np.arange(0, 4)
+        c = np.zeros(10)
+        a = np.zeros(12)
+        h = np.zeros(4)
         
         c[1] = self.molal[1]
         c[2] = self.molal[2]
@@ -497,6 +533,7 @@ class Water:
         
         self.bp0 = 1.2e0
         self.mh2o = 55.51e0
+        
         u, z = 0, 0
         
         u += np.sum(c * self.nzc ** 2)
@@ -615,6 +652,7 @@ class Water:
                 for j in range(1, self.na+1):
                     u += h[k] * a[j] * self.xi[k, ii, j]
             gc[ii] = np.exp(u)
+            
         for jj in range(1, self.na+1):
             u = self.nza[jj] ** 2 * f
             for i in range(1, self.nc+1):
@@ -649,6 +687,7 @@ class Water:
                 for j in range(1, self.na+1):
                     u += c[i] * a[j] * self.xi[k, i, j]
             gn[k] = np.exp(u)
+            
         u = -self.ap0 * fi ** 1.5e0 / (1 + self.bp0 * fj)
         for i in range(1, self.nc+1):
             for j in range(1, self.na+1):
@@ -710,38 +749,47 @@ class Water:
         self.gact[17] = 1
         self.ndepact = 1
             
-    def temperature(self, at, bt, ct, dt, et):
-        return((at + bt * self.temp + ct * self.temp ** 2 + 
-                dt * self.temp ** 3 + et * self.temp ** 4))
-    
-    def j0(self, x):
-        ya, yb, yc, yd = 4.581, -0.7237, -0.012, 0.528
-        j0 = x / (4. + ya * x ** yb * np.exp(yc * x ** yd))
-        return(j0)
+    def density(self):
+        nc, na = 5, 5
+        
+        s = np.zeros((nc+1, na+1))
+        
+        density = pd.read_csv("densite", header=None)
+        ao = density.iloc[:,1].values.reshape((5, 5))
+        bo = density.iloc[:,2].values.reshape((5, 5))
+        au = density.iloc[:,3].values.reshape((5, 5))
+        bu = density.iloc[:,4].values.reshape((5, 5))
+        
+        if self.unit_S == "molar":
+            self.dens = 1
+            u = np.sum(self.ani[1:na+1])
+                
+            i = np.repeat(np.arange(1, nc+1), na)
+            j = np.tile(np.arange(1, na+1), nc)
+            s[i, j] = ((self.nchcat[i] + self.nchani[j]) / 2 * self.cat[i] * 
+                       self.ani[j] / self.nchcat[i] / self.nchani[j] / u)
+            self.dens += np.sum(ao[i, j] * s[i, j] + bo[i, j] * s[i, j] ** 2)
             
-    def j1(self, x):
-        ya, yb, yc, yd = 4.581, -0.7237, -0.012, 0.528
-        j1 = ((4. + ya * x ** yb * (1. - yb - yc * yd * x ** yd) * 
-          np.exp(yc * x ** yd)) / (4. + ya * x ** yb * 
-                                   np.exp(yc * x ** yd)) ** 2)
-        return(j1)
-    
-    def g0(self, x):
-        g0 = 2. * (1. - (1. + x) * np.exp(-x)) / x ** 2
-        return(g0)
+        elif self.unit_S == "molal":
+            self.dens = 1
+            u = np.sum(self.ani[1:na+1] * self.nchani[1:na+1])
+            i = np.repeat(np.arange(1, nc+1), na)
+            j = np.tile(np.arange(1, na+1), nc)
+            s[i, j] = ((self.nchcat[i] + self.nchani[j]) / 2 * self.cat[i] * 
+                       self.ani[j] / u)
+            self.dens += np.sum(au[i, j] * s[i, j] + bu[i, j] * s[i, j] ** 2)
             
-    def g1(self, x):
-        g1 = -2. * (1. - (1. + x + x ** 2 / 2.) * np.exp(-x)) / x ** 2
-        return(g1)
 
-    def run(self):
-        # 200 continue !reprise
-        # aka line 373
+    def iterate_molalities(self):
+        """ LINE 373, tag 200 continue !reprise"""
+        
+        pass
+        
         self.nu = 1
         self.ncompt = 0
         while self.nu != 0:
             self.actp()
-            self.act[1:] = self.molal * self.gact[1:]
+            self.act = self.molal * self.gact
             self.act[0] = self.aw
             self.tot[11] = (10 ** (-self.ph)) / self.gact[11]
             self.act[11] = 10 ** (-self.ph)
@@ -752,7 +800,6 @@ class Water:
                         self.z[i, j] = kmat[i, j]
                     u += kmat[i, j] * self.molal[j]
                 self.zz[i] = self.tot[i] - u
-            
             for i in range(13, n+1):
                 for j in range(1, n+1):
                     if self.molal[j] != 0:
@@ -763,9 +810,7 @@ class Water:
                 for j in range(0, n+1):
                     if self.act[j] > 0:
                         u += kmat[i, j] * np.log(self.act[j])
-                
                 self.zz[i] = np.log(self.psc[i-12]) - u
-                
             for k in range(1, n0+1):
                 if self.tot[k] == 0 and k != 12:
                     self.ica[k] = 0
@@ -775,20 +820,18 @@ class Water:
                     for j in range(k+1, n+1):
                         if kmat[k, j] != 0:
                             self.ica[j] = 0
-                        
             ni, nj = n, n
-            for k in range(n, 1, -1):
+            for k in range(n, 0, -1):
                 if self.ica[k] == 0:
                     for i in range(k, ni):
                         for j in range(1, nj+1):
                             self.z[i, j] = self.z[i+1, j]
-                        self.zz[i] = self.zz[i+1]
+                        self.zz[i] = self.zz[i+1]    
                     ni -= 1
                     for j in range(k, nj):
                         for i in range(1, ni+1):
                             self.z[i, j] = self.z[i, j+1]
                     nj -= 1
-            
             for k in range(2, ni+1):
                 for i in range(k, ni+1):
                     if self.z[i, k-1] != 0:
@@ -796,116 +839,111 @@ class Water:
                         for j in range(k, ni+1):
                             self.z[i, j] = self.z[k-1, j] - self.z[i, j] * u
                         self.zz[i] = self.zz[k-1] - self.zz[i] * u
+            self.xx[ni] = self.zz[ni] / self.z[ni, ni]
+            for i in range(ni-1, 0, -1):
+                s = 0
+                for j in range(i+1, ni+1):
+                    s += self.z[i, j] * self.xx[j]
+                
+            for k in range(1, n+1):
+                if self.ica[k] == 0:
+                    for i in range(ni, k-1, -1):
+                        self.xx[i+1] = self.xx[i]
+                    self.xx[k] = 0
+                    ni += 1
             
-            # LINE 453
+            self.ncompt += 1
+            print("iteration molalities {}".format(self.ncompt))
+            
+            if self.ncompt >= 100:
+                for i in range(1, n+1):
+                    if self.molal[i] + self.xx[i] / self.nconv < 0:
+                        print("the equation set diverges: end of program")
+                        return()
+            
+            for i in range(1, n+1):
+                if self.molal[i] + self.xx[i] / self.nconv < 0:
+                    self.molal[i] = self.eps
+                else:
+                    self.molal[i] = self.molal[i] + self.xx[i] / self.nconv
+            
+            self.nu = 0
+            for i in range(1, n+1):
+                if self.ica[i] == 1:
+                    if (200 * np.abs(self.xx[i] / self.nconv / 
+                                     (2 * self.molal[i] - 
+                                      self.xx[i] / self.nconv)) > self.pk):
+                        self.nu = 1
+        
+        self.std = np.sum(self.molal[1:] * atom[1:])
+        print("tdsi = {}".format(self.stdi))
+        print("tds = {}".format(self.std))
+        
+        if (np.abs(self.std - self.stdi) / 
+            (self.std + self.stdi) * 200 < self.pkstd):
+            return()
+        else:
+            if self.unit_S == "molar":
+                self.ef = (1000 + self.std) / self.dens / 1000
+                for i in range(1, ntot+1):
+                    if i != 11:
+                        self.tot[i] = self.tot[i] / self.ee * self.ef
+                for i in range(0, n+1):
+                    if i != 11:
+                        self.molal[i] = self.molal[i] / self.ee * self.ef
+                self.ee = self.ef
+            print("iteration TDS")
+            self.stdi = self.std
+    
+    def function_B(self):
+        """ LINE 525 """
+        if self.unit_S == "molal" and self.dil == 0:
+            self.cat[1:6] = self.tot[1:6]
+            self.nchcat[1:6] = self.nch[1:6]
+            self.ani[1:4] = self.tot[6:9]
+            self.nchani[1:4] = -nch[6:9]
+            self.ani[4] = self.molal[12]
+            self.ani[5] = self.molal[14] + self.molal[16] + self.molal[17]
+            self.nchani[4] = -nch[12]
+            self.nchani[5] = -nch[14]
+            
+            self.density()
+            # Stopped at line 530 to write density method
+            self.calculate_pCO2()
+            
+            
+    def calculate_pCO2(self):
+        self.po = np.log(self.act[15] / self.psc[14]) / np.log(10)
+        if self.pco2_S == "":
+            if self.diltot == 1:
+                self.poinit = self.po
+                self.phinit = self.ph
+            
+            print("LOG PCO2 = {}".format(self.po))
+            
+            if self.pc:
+                self.po0 = self.po
+                self.ph0 = self.ph
+                
+                print("\nLog(PCO2) selected = {}".format(self.pc))
+                print("Log(PCO2) calculated = {}\n".format(self.po))
+                
+                if np.abs(self.po - self.pc) > 0.01:
+                    if self.po < self.pc and self.poa < self.pc:
+                        self.ph -= self.dph
+                    if self.po < self.pc and self.poa > self.pc:
+                        self.dph = self.dph / 2
+                        self.ph -= self.dph
+                    if self.po > self.pc and self.poa > self.pc:
+                        self.ph += self.dph
+                    if self.po > self.pc and self.poa < self.pc:
+                        self.dph = self.dph/2
+                        self.ph += self.dph
+                    self.poa = self.po
+                    
+                    self.iterate_molalities()
 
 
 
 test = Water(label='test', temp=30, dens=1, ph=6.55, na=84.5, k=3.3, li=0,
              ca=2.7, mg=1.3, cl=39.5, so4=0, alk=56.2, no3=0, si=0, b=0)
-
-
-test.actp()
-
-
-def j0(x):
-    ya, yb, yc, yd = 4.581, -0.7237, -0.012, 0.528
-    j0 = x / (4. + ya * x ** yb * np.exp(yc * x ** yd))
-    return(j0)
-        
-def j1(x):
-    ya, yb, yc, yd = 4.581, -0.7237, -0.012, 0.528
-    j1 = ((4. + ya * x ** yb * (1. - yb - yc * yd * x ** yd) * 
-      np.exp(yc * x ** yd)) / (4. + ya * x ** yb * 
-                               np.exp(yc * x ** yd)) ** 2)
-    return(j1)
-
-def g0(x):
-    g0 = 2. * (1. - (1. + x) * np.exp(-x)) / x ** 2
-    return(g0)
-        
-def g1(x):
-    g1 = -2. * (1. - (1. + x + x ** 2 / 2.) * np.exp(-x)) / x ** 2
-    return(g1)
-
-g0(1e-161)
-
-
-# b0, self.b1, b2, c0
-
-
-# def temperature(temp, at, bt, ct, dt, et):
-#     return((at + bt * temp + ct * temp ** 2 + 
-#             dt * temp ** 3 + et * temp ** 4))
-
-
-# import time
-
-# ta = time.perf_counter_ns() 
- 
-# index = 2+nc+na
-# coordinates = np.zeros((6, nc*na), dtype=int)
-# coordinates[0,:] = np.repeat(np.arange(0, nc), na)
-# coordinates[1,:] = np.tile(np.arange(0, na), nc)
-# coordinates[2,:] = np.arange(0, nc*na*4, 4) + index
-# coordinates[3,:] = np.arange(1, nc*na*4, 4) + index
-# coordinates[4,:] = np.arange(2, nc*na*4, 4) + index
-# coordinates[5,:] = np.arange(3, nc*na*4, 4) + index
-
-# b0 = np.zeros((nc, na))
-# b1 = np.zeros((nc, na))
-# b2 = np.zeros((nc, na))
-# c0 = np.zeros((nc, na))
-
-# for i in range(0, nc*na):
-#     x, y = coordinates[0:2, i]
-    
-#     (at, bt, ct, dt, et) = (float(k) for k in 
-#                             text[coordinates[2,i]][1:])
-#     b0[x, y] = temperature(test.temp, at, bt, ct, dt, et)
-    
-#     (at, bt, ct, dt, et) = (float(k) for k in 
-#                             text[coordinates[3,i]][1:])
-#     b1[x, y] = temperature(test.temp, at, bt, ct, dt, et)
-    
-#     (at, bt, ct, dt, et) = (float(k) for k in 
-#                             text[coordinates[4,i]][1:])
-#     b2[x, y] = temperature(test.temp, at, bt, ct, dt, et)
-    
-#     (at, bt, ct, dt, et) = (float(k) for k in 
-#                             text[coordinates[5,i]][1:])
-#     c0[x, y] = temperature(test.temp, at, bt, ct, dt, et)
-    
-# tb = time.perf_counter_ns() 
-
-# b0 = np.zeros((nc, na))
-# b1 = np.zeros((nc, na))
-# b2 = np.zeros((nc, na))
-# c0 = np.zeros((nc, na))
-
-# index = 2+nc+na
-# for i in range(0, nc):
-#     for j in range(0, na):
-#         (at, bt, ct, dt, et) = (float(k) for k in text[index][1:])
-#         b0[i, j] = temperature(test.temp, at, bt, ct, dt, et)
-        
-#         index += 1
-#         (at, bt, ct, dt, et) = (float(k) for k in text[index][1:])
-#         b1[i, j] = temperature(test.temp, at, bt, ct, dt, et)
-        
-#         index += 1
-#         (at, bt, ct, dt, et) = (float(k) for k in text[index][1:])
-#         b2[i, j] = temperature(test.temp, at, bt, ct, dt, et)
-        
-#         index += 1
-#         (at, bt, ct, dt, et) = (float(k) for k in text[index][1:])
-#         c0[i, j] = temperature(test.temp, at, bt, ct, dt, et)
-
-# tc = time.perf_counter_ns() 
-
-
-
-
-# d1 = tb - ta
-# d2 = tc - tb
-
