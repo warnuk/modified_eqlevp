@@ -43,7 +43,7 @@ kmat = np.zeros((n+1, n+1))
 ica = np.zeros(n+1)
 
 aqu = pd.read_csv("aqu.dat", header=None)
-aq_S = aqu.iloc[:,0].values
+aq_S = aqu.iloc[:,0].values.astype(str)
 atom = aqu.iloc[:,1].values
 nch = aqu.iloc[:,2].values
 
@@ -92,7 +92,7 @@ for k in range(0, nm):
         nom_ion_S[i] = mineral_list[k][3+2*i]
 
         j = np.where(aq_S == nom_ion_S[i].lower())
-        wmin[k, j] = c_ion[i]
+        wmin[k+1, j] = c_ion[i]
     min_db[k, :] = [float(i) for i in mineral_list[k][(1+ncomp)*2:]]
     
 min_db = pd.DataFrame(min_db, columns=['at', 'bt', 'ct', 'dt', 'et'])
@@ -181,6 +181,8 @@ class Water:
         self.tot[11] = 10 ** -ph
         self.tot[12] = self.alk / 1000
         
+        self.nminer = np.count_nonzero(self.tot[1:11])
+        
         self.charge_balance()
         
         self.tot0 = self.tot
@@ -206,6 +208,8 @@ class Water:
         
         self.psol = np.exp(self.mum - np.sum((wmin[1:,:] * self.mu), axis=1)) 
         
+        self.calculate_molalities()
+        
         self.gact = np.zeros(n+1)
         
         self.ndepact = 0
@@ -224,8 +228,8 @@ class Water:
         iani = np.argmax(-ani_ch)
         sa = np.sum(ani_ch)
         
-        print("sum of cations = {}".format(sc))
-        print("sum of anions = {}".format(sa))
+        print("Sum of cations = {}".format(sc))
+        print("Sum of anions = {}".format(sa))
         
         if sc + sa != 0:
             dca = 200 * np.abs(sc - sa) / (sc + sa)
@@ -314,8 +318,8 @@ class Water:
               self.molal[19] + self.molal[20] + self.molal[21] * 2 +
               self.molal[24] + self.molal[25])
         
-        print("\nSum of cations = {} corrected for {}".format(sc, aq_S[icat][0].upper()))
-        print("Sum of anions = {} corrected for {}\n".format(sa, aq_S[iani][0].upper()))
+        print("\nSum of cations = {} corrected for {}".format(sc, aq_S[icat][0]))
+        print("Sum of anions = {} corrected for {}\n".format(sa, aq_S[iani][0]))
         
         s = np.sum(atom * self.molal)
         
@@ -335,7 +339,7 @@ class Water:
     def actp(self):
         c = np.arange(0, 10)
         a = np.arange(0, 12)
-        h = n.arange(0, 4)
+        h = np.arange(0, 4)
         
         c[1] = self.molal[1]
         c[2] = self.molal[2]
@@ -383,42 +387,51 @@ class Water:
             nzc[1:] = [int(i[1]) for i in text[1:1+nc]]
             nza[1:] = [int(i[1]) for i in text[1+nc:1+nc+na]]
             
-            (at, bt, ct, dt, et) = (float(i) for i in text[1+nc+na][1:])
+            (at, bt, ct, dt, et) = (float(i.replace('d', 'e')) 
+                                    for i in text[1+nc+na][1:])
             
             self.ap0 = self.temperature(at, bt, ct, dt, et)
             
             # b0, b1, b2, c0
             
             
-            index = 2+nc+na
+            index = 1+nc+na
+            
             for i in range(1, nc+1):
                 for j in range(1, na+1):
-                    (at, bt, ct, dt, et) = (float(k) for k in text[index][1:])
+                    index += 1
+                    (at, bt, ct, dt, et) = (float(k.replace('d', 'e')) 
+                                            for k in text[index][1:])
                     b0[i, j] = self.temperature(at, bt, ct, dt, et)
                     
                     index += 1
-                    (at, bt, ct, dt, et) = (float(k) for k in text[index][1:])
+                    (at, bt, ct, dt, et) = (float(k.replace('d', 'e')) 
+                                            for k in text[index][1:])
                     b1[i, j] = self.temperature(at, bt, ct, dt, et)
                     
                     index += 1
-                    (at, bt, ct, dt, et) = (float(k) for k in text[index][1:])
+                    (at, bt, ct, dt, et) = (float(k.replace('d', 'e')) 
+                                            for k in text[index][1:])
                     b2[i, j] = self.temperature(at, bt, ct, dt, et)
                     
                     index += 1
-                    (at, bt, ct, dt, et) = (float(k) for k in text[index][1:])
-                    c0[i, j] = self.temperature(at, bt, ct, dt, et)            
+                    (at, bt, ct, dt, et) = (float(k.replace('d', 'e')) 
+                                            for k in text[index][1:])
+                    c0[i, j] = self.temperature(at, bt, ct, dt, et)
             
             for i in range(1, nc):
                 for j in range(i+1, nc+1):
                     index += 1
-                    (at, bt, ct, dt, et) = (float(k) for k in text[index][1:])
+                    (at, bt, ct, dt, et) = (float(k.replace('d', 'e')) 
+                                            for k in text[index][1:])
                     tc[i, j] = self.temperature(at, bt, ct, dt, et)
                     tc[j, i] = tc[i, j]
                     
             for i in range(1, na):
                 for j in range(i+1, na+1):
                     index += 1
-                    (at, bt, ct, dt, et) = (float(k) for k in text[index][1:])
+                    (at, bt, ct, dt, et) = (float(k.replace('d', 'e')) 
+                                            for k in text[index][1:])
                     ta[i, j] = self.temperature(at, bt, ct, dt, et)
                     ta[j, i] = ta[i, j]
                     
@@ -426,7 +439,7 @@ class Water:
                 for i in range(k+1, nc+1):
                     for j in range(1, na+1):
                         index += 1
-                        (at, bt, ct, dt, et) = (float(k) 
+                        (at, bt, ct, dt, et) = (float(k.replace('d', 'e')) 
                                                 for k in text[index][1:])
                         sc[k, i, j] = self.temperature(at, bt, ct, dt, et)
                         sc[i, k, j] = sc[k, i, j]
@@ -435,30 +448,29 @@ class Water:
                 for i in range(k+1, na+1):
                     for j in range(1, nc+1):
                         index += 1
-                        (at, bt, ct, dt, et) = (float(k) 
+                        (at, bt, ct, dt, et) = (float(k.replace('d', 'e')) 
                                                 for k in text[index][1:])
                         sa[k, i, j] = self.temperature(at, bt, ct, dt, et)
-                        sa[i, k, j] = sc[k, i, j]
+                        sa[i, k, j] = sa[k, i, j]
                         
             for i in range(1, nn+1):
                 for j in range(1, nc+1):
                     index += 1
-                    (at, bt, ct, dt, et) = (float(k) for k in text[index][1:])
+                    (at, bt, ct, dt, et) = (float(k.replace('d', 'e')) 
+                                            for k in text[index][1:])
                     lc[i, j] = self.temperature(at, bt, ct, dt, et)
             
             for i in range(1, nn+1):
                 for j in range(1, na+1):
                     index += 1
-                    (at, bt, ct, dt, et) = (float(k) for k in text[index][1:])
+                    (at, bt, ct, dt, et) = (float(k.replace('d', 'e')) 
+                                            for k in text[index][1:])
                     la[i, j] = self.temperature(at, bt, ct, dt, et)
             
             for k in range(1, nn+1):
                 for i in range(1, nc+1):
                     for j in range(1, na+1):
-                        index += 1
-                        (at, bt, ct, dt, et) = (float(k) 
-                                                for k in text[index][1:])
-                        xi[k, i, j] = self.temperature(at, bt, ct, dt, et)
+                        xi[k, i, j] = 0
                         
             xi[2, 9, 1] = -0.0102
             xi[2, 1, 2] = 0.046
@@ -495,7 +507,7 @@ class Water:
                     xc[i, j] = 2 * u
                     xc[i, i] = nzc[i] ** 2 * u
                     xc[j, j] = nzc[j] ** 2 * u
-                    ec[i, j] = (self.j0(xc[i, j]) - self.jo(xc[i, i]) / 2 - 
+                    ec[i, j] = (self.j0(xc[i, j]) - self.j0(xc[i, i]) / 2 - 
                                 self.j0(xc[j, j]) / 2) / fi / 2
                     fc[i, j] = ((xc[i, j] * self.j1(xc[i, j]) - xc[i, i] * 
                                 self.j1(xc[i, i]) / 2 - xc[j, j] * 
@@ -568,7 +580,7 @@ class Water:
         for ii in range(1, nc+1):
             u = nzc[ii] ** 2 * f
             for j in range(1, na+1):
-                u += a[j] * (b[ii, j] * 2 + z * c[ii, j])
+                u += a[j] * (b[ii, j] * 2 + z * cc[ii, j])
             for i in range(1, nc+1):
                 if i != ii:
                     v = 0
@@ -681,39 +693,28 @@ class Water:
         self.gact[16] = 1
         self.gact[17] = 1
         self.ndepact = 1
-
-            
-                            
-        
-        
-            
-        
-            
-                
-
-
             
     def temperature(self, at, bt, ct, dt, et):
         return((at + bt * self.temp + ct * self.temp ** 2 + 
                 dt * self.temp ** 3 + et * self.temp ** 4))
     
-    def j0(x):
+    def j0(self, x):
         ya, yb, yc, yd = 4.581, -0.7237, -0.012, 0.528
         j0 = x / (4. + ya * x ** yb * np.exp(yc * x ** yd))
         return(j0)
             
-    def j1(x):
+    def j1(self, x):
         ya, yb, yc, yd = 4.581, -0.7237, -0.012, 0.528
         j1 = (4. + ya * x ** yb * (1. - yb - yc * yd * x ** yd) * 
           np.exp(yc * x ** yd)) / (4. + ya * x ** yb * 
                                    np.exp(yc * x ** yd)) ** 2
         return(j1)
     
-    def g0(x):
+    def g0(self, x):
         g0 = 2. * (1. - (1. + x) * np.exp(-x)) / x ** 2
         return(g0)
             
-    def g1(x):
+    def g1(self, x):
         g1 = -2. * (1. - (1. + x + x ** 2 / 2.) * np.exp(-x)) / x ** 2
         return(g1)
 
@@ -727,6 +728,7 @@ class Water:
             self.act[1:] = self.molal * self.gact[1:]
             self.act[0] = self.aw
             self.tot[11] = (10 ** (-self.ph)) / self.gact[11]
+            self.act[11] = 10 ** (-self.ph)
             for i in range(1, 13):
                 u = 0
                 for j in range(1, n+1):
@@ -735,13 +737,51 @@ class Water:
                     u += kmat[i, j] * self.molal[j]
                 self.zz[i] = self.tot[i] - u
             
-            for i in range(12, n):
-                for j in range(0, n):
+            for i in range(13, n+1):
+                for j in range(1, n+1):
                     if self.molal[j] != 0:
                         self.z[i, j] = kmat[i, j] / self.molal[j]
                     elif self.molal[j] == 0:
                         self.z[i, j] = 0
+                u = 0
+                for j in range(0, n+1):
+                    if self.act[j] > 0:
+                        u += kmat[i, j] * np.log(self.act[j])
                 
+                self.zz[i] = np.log(self.psc[i-12]) - u
+                
+            for k in range(1, n0+1):
+                if self.tot[k] == 0 and k != 12:
+                    self.ica[k] = 0
+                    for i in range(k+1, n+1):
+                        if kmat[i, k] != 0:
+                            self.ica[i] = 0
+                    for j in range(k+1, n+1):
+                        if kmat[k, j] != 0:
+                            self.ica[j] = 0
+                        
+            ni, nj = n, n
+            for k in range(n, 1, -1):
+                if self.ica[k] == 0:
+                    for i in range(k, ni):
+                        for j in range(1, nj+1):
+                            self.z[i, j] = self.z[i+1, j]
+                        self.zz[i] = self.zz[i+1]
+                    ni -= 1
+                    for j in range(k, nj):
+                        for i in range(1, ni+1):
+                            self.z[i, j] = self.z[i, j+1]
+                    nj -= 1
+            
+            for k in range(2, ni+1):
+                for i in range(k, ni+1):
+                    if self.z[i, k-1] != 0:
+                        u = self.z[k-1, k-1] / self.z[i, k-1]
+                        for j in range(k, ni+1):
+                            self.z[i, j] = self.z[k-1, j] - self.z[i, j] * u
+                        self.zz[i] = self.zz[k-1] - self.zz[i] * u
+            
+            # LINE 453
 
 
 
@@ -749,10 +789,7 @@ test = Water(label='test', temp=30, dens=1, ph=6.55, na=84.5, k=3.3, li=0,
              ca=2.7, mg=1.3, cl=39.5, so4=0, alk=56.2, no3=0, si=0, b=0)
 
 
-test.psc.shape
-
-
-
+test.actp()
 
 
 
