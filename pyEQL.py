@@ -23,6 +23,7 @@ conversion to Python 3: W. ARNUK
 import pandas as pd
 import numpy as np
 from datetime import datetime
+from mpmath import *
 
 n = 25
 ntot = 12
@@ -240,7 +241,7 @@ class Water:
               
         
     def calculate_molalities(self):
-        self.molal = np.zeros(n+1)
+        self.molal = np.zeros(n+1, dtype=np.longdouble)
         self.molal[1] = self.tot[1]
         self.molal[2] = self.tot[2]
         self.molal[3] = self.tot[3]
@@ -370,145 +371,156 @@ class Water:
                 text = [i.split(",") for i in file.read().split("\n")][:-1]
                 file.close()
         
-            (nc, na, nn) = (int(i) for i in text[0])
-            nzc, nza = np.zeros(nc+1), np.zeros(na+1)
-            (b0, b1, b2, c0) = (np.zeros((nc+1, na+1)), np.zeros((nc+1, na+1)), 
-                                np.zeros((nc+1, na+1)), np.zeros((nc+1, na+1)))
-            sc = np.zeros((nc+1, nc+1, na+1))
-            sa = np.zeros((na+1, na+1, nc+1))
-            tc = np.zeros((nc+1, nc+1))
-            ta = np.zeros((na+1, na+1))
-            lc = np.zeros((nn+1, nc+1))
-            la = np.zeros((nn+1, na+1))
-            xi = np.zeros((nn+1, nc+1, na+1))
+            (self.nc, self.na, self.nn) = (int(i) for i in text[0])
+            self.nzc, self.nza = np.zeros(self.nc+1), np.zeros(self.na+1)
+            (self.b0, self.b1, self.b2, self.c0) = (np.zeros((self.nc+1, self.na+1), dtype=np.longdouble), 
+                                np.zeros((self.nc+1, self.na+1), dtype=np.longdouble), 
+                                np.zeros((self.nc+1, self.na+1), dtype=np.longdouble), 
+                                np.zeros((self.nc+1, self.na+1), dtype=np.longdouble))
+            self.sc = np.zeros((self.nc+1, self.nc+1, self.na+1), dtype=np.longdouble)
+            self.sa = np.zeros((self.na+1, self.na+1, self.nc+1), dtype=np.longdouble)
+            self.tc = np.zeros((self.nc+1, self.nc+1), dtype=np.longdouble)
+            self.ta = np.zeros((self.na+1, self.na+1), dtype=np.longdouble)
+            self.lc = np.zeros((self.nn+1, self.nc+1), dtype=np.longdouble)
+            self.la = np.zeros((self.nn+1, self.na+1), dtype=np.longdouble)
+            self.xi = np.zeros((self.nn+1, self.nc+1, self.na+1), dtype=np.longdouble)
             
             
             
-            nzc[1:] = [int(i[1]) for i in text[1:1+nc]]
-            nza[1:] = [int(i[1]) for i in text[1+nc:1+nc+na]]
+            self.nzc[1:] = [int(i[1]) for i in text[1:1+self.nc]]
+            self.nza[1:] = [int(i[1]) for i in text[1+self.nc:1+self.nc+self.na]]
             
-            (at, bt, ct, dt, et) = (float(i.replace('d', 'e')) 
-                                    for i in text[1+nc+na][1:])
+            (at, bt, ct, dt, et) = (np.float64(i.replace('d', 'e')) 
+                                    for i in text[1+self.nc+self.na][1:])
             
             self.ap0 = self.temperature(at, bt, ct, dt, et)
             
-            # b0, b1, b2, c0
+            index = 1+self.nc+self.na
             
+            for i in range(1, self.nc+1):
+                for j in range(1, self.na+1):
+                    index += 1
+                    (at, bt, ct, dt, et) = (np.longdouble(k.replace('d', 'e')) 
+                                            for k in text[index][1:])
+                    self.b0[i, j] = self.temperature(at, bt, ct, dt, et)
+                    
+                    index += 1
+                    (at, bt, ct, dt, et) = (np.longdouble(k.replace('d', 'e')) 
+                                            for k in text[index][1:])
+                    self.b1[i, j] = self.temperature(at, bt, ct, dt, et)
+                    
+                    index += 1
+                    (at, bt, ct, dt, et) = (np.longdouble(k.replace('d', 'e')) 
+                                            for k in text[index][1:])
+                    self.b2[i, j] = self.temperature(at, bt, ct, dt, et)
+                    
+                    index += 1
+                    (at, bt, ct, dt, et) = (np.longdouble(k.replace('d', 'e')) 
+                                            for k in text[index][1:])
+                    self.c0[i, j] = self.temperature(at, bt, ct, dt, et)
             
-            index = 1+nc+na
-            
-            for i in range(1, nc+1):
-                for j in range(1, na+1):
+            for i in range(1, self.nc):
+                for j in range(i+1, self.nc+1):
                     index += 1
-                    (at, bt, ct, dt, et) = (float(k.replace('d', 'e')) 
+                    (at, bt, ct, dt, et) = (np.longdouble(k.replace('d', 'e')) 
                                             for k in text[index][1:])
-                    b0[i, j] = self.temperature(at, bt, ct, dt, et)
+                    self.tc[i, j] = self.temperature(at, bt, ct, dt, et)
+                    self.tc[j, i] = self.tc[i, j]
                     
+            for i in range(1, self.na):
+                for j in range(i+1, self.na+1):
                     index += 1
-                    (at, bt, ct, dt, et) = (float(k.replace('d', 'e')) 
+                    (at, bt, ct, dt, et) = (np.longdouble(k.replace('d', 'e')) 
                                             for k in text[index][1:])
-                    b1[i, j] = self.temperature(at, bt, ct, dt, et)
+                    self.ta[i, j] = self.temperature(at, bt, ct, dt, et)
+                    self.ta[j, i] = self.ta[i, j]
                     
-                    index += 1
-                    (at, bt, ct, dt, et) = (float(k.replace('d', 'e')) 
-                                            for k in text[index][1:])
-                    b2[i, j] = self.temperature(at, bt, ct, dt, et)
-                    
-                    index += 1
-                    (at, bt, ct, dt, et) = (float(k.replace('d', 'e')) 
-                                            for k in text[index][1:])
-                    c0[i, j] = self.temperature(at, bt, ct, dt, et)
-            
-            for i in range(1, nc):
-                for j in range(i+1, nc+1):
-                    index += 1
-                    (at, bt, ct, dt, et) = (float(k.replace('d', 'e')) 
-                                            for k in text[index][1:])
-                    tc[i, j] = self.temperature(at, bt, ct, dt, et)
-                    tc[j, i] = tc[i, j]
-                    
-            for i in range(1, na):
-                for j in range(i+1, na+1):
-                    index += 1
-                    (at, bt, ct, dt, et) = (float(k.replace('d', 'e')) 
-                                            for k in text[index][1:])
-                    ta[i, j] = self.temperature(at, bt, ct, dt, et)
-                    ta[j, i] = ta[i, j]
-                    
-            for k in range(1, nc):
-                for i in range(k+1, nc+1):
-                    for j in range(1, na+1):
+            for k in range(1, self.nc):
+                for i in range(k+1, self.nc+1):
+                    for j in range(1, self.na+1):
                         index += 1
-                        (at, bt, ct, dt, et) = (float(k.replace('d', 'e')) 
+                        (at, bt, ct, dt, et) = (np.longdouble(k.replace('d', 'e')) 
                                                 for k in text[index][1:])
-                        sc[k, i, j] = self.temperature(at, bt, ct, dt, et)
-                        sc[i, k, j] = sc[k, i, j]
+                        self.sc[k, i, j] = self.temperature(at, bt, ct, dt, et)
+                        self.sc[i, k, j] = self.sc[k, i, j]
             
-            for k in range(1, na):
-                for i in range(k+1, na+1):
-                    for j in range(1, nc+1):
+            for k in range(1, self.na):
+                for i in range(k+1, self.na+1):
+                    for j in range(1, self.nc+1):
                         index += 1
-                        (at, bt, ct, dt, et) = (float(k.replace('d', 'e')) 
+                        (at, bt, ct, dt, et) = (np.longdouble(k.replace('d', 'e')) 
                                                 for k in text[index][1:])
-                        sa[k, i, j] = self.temperature(at, bt, ct, dt, et)
-                        sa[i, k, j] = sa[k, i, j]
+                        self.sa[k, i, j] = self.temperature(at, bt, ct, dt, et)
+                        self.sa[i, k, j] = self.sa[k, i, j]
                         
-            for i in range(1, nn+1):
-                for j in range(1, nc+1):
+            for i in range(1, self.nn+1):
+                for j in range(1, self.nc+1):
                     index += 1
-                    (at, bt, ct, dt, et) = (float(k.replace('d', 'e')) 
+                    (at, bt, ct, dt, et) = (np.longdouble(k.replace('d', 'e')) 
                                             for k in text[index][1:])
-                    lc[i, j] = self.temperature(at, bt, ct, dt, et)
+                    self.lc[i, j] = self.temperature(at, bt, ct, dt, et)
             
-            for i in range(1, nn+1):
-                for j in range(1, na+1):
+            for i in range(1, self.nn+1):
+                for j in range(1, self.na+1):
                     index += 1
-                    (at, bt, ct, dt, et) = (float(k.replace('d', 'e')) 
+                    (at, bt, ct, dt, et) = (np.longdouble(k.replace('d', 'e')) 
                                             for k in text[index][1:])
-                    la[i, j] = self.temperature(at, bt, ct, dt, et)
+                    self.la[i, j] = self.temperature(at, bt, ct, dt, et)
             
-            for k in range(1, nn+1):
-                for i in range(1, nc+1):
-                    for j in range(1, na+1):
-                        xi[k, i, j] = 0
+            for k in range(1, self.nn+1):
+                for i in range(1, self.nc+1):
+                    for j in range(1, self.na+1):
+                        self.xi[k, i, j] = 0
                         
-            xi[2, 9, 1] = -0.0102
-            xi[2, 1, 2] = 0.046
+            self.xi[2, 9, 1] = -0.0102
+            self.xi[2, 1, 2] = 0.046
         
-        ec, ea = np.zeros((nc+1, nc+1)), np.zeros((na+1, na+1))
-        fc, fa = np.zeros((nc+1, nc+1)), np.zeros((na+1, na+1))
-        xc, xa = np.zeros((nc+1, nc+1)), np.zeros((na+1, na+1))
-        pp, qp = np.zeros((nc+1, nc+1)), np.zeros((na+1, na+1))
-        p, q = np.zeros((nc+1, nc+1)), np.zeros((na+1, na+1))
-        pf, qf = np.zeros((nc+1, nc+1)), np.zeros((na+1, na+1))
-        cc, bf = np.zeros((nc+1, na+1)), np.zeros((nc+1, na+1))
-        b, bp = np.zeros((nc+1, na+1)), np.zeros((nc+1, na+1))
-        gc, ga, gn = np.zeros(nc+1), np.zeros(na+1), np.zeros(nn+1)
+        ec, ea = (np.zeros((self.nc+1, self.nc+1), dtype=np.longdouble), 
+                  np.zeros((self.na+1, self.na+1), dtype=np.longdouble))
+        fc, fa = (np.zeros((self.nc+1, self.nc+1), dtype=np.longdouble), 
+                  np.zeros((self.na+1, self.na+1), dtype=np.longdouble))
+        xc, xa = (np.zeros((self.nc+1, self.nc+1), dtype=np.longdouble), 
+                  np.zeros((self.na+1, self.na+1), dtype=np.longdouble))
+        pp, qp = (np.zeros((self.nc+1, self.nc+1), dtype=np.longdouble), 
+                  np.zeros((self.na+1, self.na+1), dtype=np.longdouble))
+        p, q = (np.zeros((self.nc+1, self.nc+1), dtype=np.longdouble), 
+                np.zeros((self.na+1, self.na+1), dtype=np.longdouble))
+        pf, qf = (np.zeros((self.nc+1, self.nc+1), dtype=np.longdouble), 
+                  np.zeros((self.na+1, self.na+1), dtype=np.longdouble))
+        cc, bf = (np.zeros((self.nc+1, self.na+1), dtype=np.longdouble), 
+                  np.zeros((self.nc+1, self.na+1), dtype=np.longdouble))
+        b, bp = (np.zeros((self.nc+1, self.na+1), dtype=np.longdouble), 
+                 np.zeros((self.nc+1, self.na+1), dtype=np.longdouble))
+        gc, ga, gn = (np.zeros(self.nc+1, dtype=np.longdouble), 
+                      np.zeros(self.na+1, dtype=np.longdouble), 
+                      np.zeros(self.nn+1, dtype=np.longdouble))
         
         self.bp0 = 1.2e0
         self.mh2o = 55.51e0
         u, z = 0, 0
         
-        for i in range(1, nc+1):
-            u += c[i] * nzc[i] ** 2
-            z += c[i] * nzc[i]
-        for j in range(1, na+1):
-            u += a[j] * nza[j] ** 2
-            z += a[j] * nza[j]
+        u += np.sum(c * self.nzc ** 2)
+        z += np.sum(c * self.nzc)
+        u += np.sum(a * self.nza ** 2)
+        z += np.sum(a * self.nza)
+
         fi = u / 2
         fj = np.sqrt(fi)
-        u = 6 * self.ap0 * fj
-        for i in range(1, nc):
-            for j in range(i+1, nc+1):
-                if nzc[i] == nzc[j]:
+        u = 6 * self.ap0 * fj        
+        
+        for i in range(1, self.nc):
+            for j in range(i+1, self.nc+1):
+                
+                if self.nzc[i] == self.nzc[j]:
                     ec[i, j] = 0
                     fc[i, j] = 0
+                    
                 else:
                     xc[i, j] = 2 * u
-                    xc[i, i] = nzc[i] ** 2 * u
-                    xc[j, j] = nzc[j] ** 2 * u
-                    ec[i, j] = (self.j0(xc[i, j]) - self.j0(xc[i, i]) / 2 - 
-                                self.j0(xc[j, j]) / 2) / fi / 2
+                    xc[i, i] = self.nzc[i] ** 2 * u
+                    xc[j, j] = self.nzc[j] ** 2 * u
+                    ec[i, j] = ((self.j0(xc[i, j]) - self.j0(xc[i, i]) / 2 - 
+                                self.j0(xc[j, j]) / 2) / fi / 2)
                     fc[i, j] = ((xc[i, j] * self.j1(xc[i, j]) - xc[i, i] * 
                                 self.j1(xc[i, i]) / 2 - xc[j, j] * 
                                 self.j1(xc[j, j]) / 2) / fi ** 2 / 4 - 
@@ -516,15 +528,15 @@ class Water:
                     ec[j, i] = ec[i, j]
                     fc[j, i] = fc[i, j]
                     
-        for i in range(1, na):
-            for j in range(i+1, na+1):
-                if nza[i] == nza[j]:
+        for i in range(1, self.na):
+            for j in range(i+1, self.na+1):
+                if self.nza[i] == self.nza[j]:
                     ea[i, j] = 0
                     fa[i, j] = 0
                 else:
                     xa[i, j] = 2 * u
-                    xa[i, i] = nza[i] ** 2 * u
-                    xa[j, j] = nza[j] ** 2 * u
+                    xa[i, i] = self.nza[i] ** 2 * u
+                    xa[j, j] = self.nza[j] ** 2 * u
                     ea[i, j] = (self.j0(xa[i, j]) - self.j0(xa[i, i]) / 2 -
                                 self.j0(xa[j, j]) / 2) / fi / 2
                     fa[i, j] = ((xa[i, j] * self.j1(xa[i, j]) - xa[i, i] * 
@@ -534,136 +546,140 @@ class Water:
                     ea[j, i] = ea[i, j]
                     fa[j, i] = fa[i, j]
         
-        for i in range(1, nc):
-            for j in range(i+1, nc+1):
+        for i in range(1, self.nc):
+            for j in range(i+1, self.nc+1):
                 pp[i, j] = fc[i, j]
-                p[i, j] = tc[i, j] + ec[i, j]
+                p[i, j] = self.tc[i, j] + ec[i, j]
                 pf[i, j] = p[i, j] + pp[i, j] * fi
                 pp[j, i] = pp[i, j]
                 p[j, i] = p[i, j]
                 pf[j, i] = pf[i, j]
         
-        for i in range(1, na):
-            for j in range(i+1, na+1):
+        for i in range(1, self.na):
+            for j in range(i+1, self.na+1):
                 qp[i, j] = fa[i, j]
-                q[i, j] = ta[i, j] + ea[i, j]
+                q[i, j] = self.ta[i, j] + ea[i, j]
                 qf[i, j] = q[i, j] + qp[i, j] * fi
                 qp[j, i] = qp[i, j]
                 q[j, i] = q[i, j]
                 qf[j, i] = qf[i, j]
                 
         w = fj * 12
-        for i in range(1, nc+1):
-            for j in range(1, na+1):
-                cc[i, j] = c0[i, j] / np.sqrt(nzc[i] * nza[j]) / 2
-                if nzc[i] == 2 and nza[j] == 2:
+        for i in range(1, self.nc+1):
+            for j in range(1, self.na+1):
+                cc[i, j] = self.c0[i, j] / np.sqrt(self.nzc[i] * self.nza[j]) / 2
+                if self.nzc[i] == 2 and self.nza[j] == 2:
                     v = fj * 1.4e0
-                if nzc[i] == 1 or nza[j] == 1:
+                if self.nzc[i] == 1 or self.nza[j] == 1:
                     v = fj * 2
-                bf[i, j] = (b0[i, j] + b1[i, j] * np.exp(-v) + 
-                            b2[i, j] * np.exp(-w))
-                b[i, j] = (b0[i, j] + b1[i, j] * 
-                           (self.g0(v)) + b2[i, j] * (self.g0(w)))
-                bp[i, j] = (b1[i, j] * (self.g1(v)) / 
-                            fi + b2[i, j] * (self.g1(w)) / fi)
+                bf[i, j] = (self.b0[i, j] + self.b1[i, j] * np.exp(-v) + 
+                            self.b2[i, j] * np.exp(-w))
+                b[i, j] = (self.b0[i, j] + self.b1[i, j] * 
+                           (self.g0(v)) + self.b2[i, j] * (self.g0(w)))
+                bp[i, j] = (self.b1[i, j] * (self.g1(v)) / 
+                            fi + self.b2[i, j] * (self.g1(w)) / fi)
         
         f = -self.ap0 * (fj / (1 + self.bp0 * fj) + 2 / self.bp0 * np.log(1 + self.bp0 * fj))
-        for i in range(1, nc+1):
-            for j in range(1, na+1):
-                f += c[i] * a[j] * bp[i, j]
-        for i in range(1, nc):
-            for j in range(i+1, nc+1):
+        
+        i = np.repeat(np.arange(1, self.nc+1), self.na)
+        j = np.tile(np.arange(1, self.na+1), self.nc)
+        f += np.sum(c[i] * a[j] * bp[i, j])
+        
+        for i in range(1, self.nc):
+            for j in range(i+1, self.nc+1):
                 f += c[i] * c[j] * pp[i, j]
-        for i in range(1, na):
-            for j in range(i+1, na+1):
+
+        for i in range(1, self.na):
+            for j in range(i+1, self.na+1):
                 f += a[i] * a[j] * qp[i, j]
-        for ii in range(1, nc+1):
-            u = nzc[ii] ** 2 * f
-            for j in range(1, na+1):
+                
+        for ii in range(1, self.nc+1):
+            u = self.nzc[ii] ** 2 * f
+            for j in range(1, self.na+1):
                 u += a[j] * (b[ii, j] * 2 + z * cc[ii, j])
-            for i in range(1, nc+1):
+            for i in range(1, self.nc+1):
                 if i != ii:
                     v = 0
-                    for j in range(1, na+1):
-                        v += a[j] * sc[ii, i, j]
+                    for j in range(1, self.na+1):
+                        v += a[j] * self.sc[ii, i, j]
                     u += c[i] * (p[ii, i] * 2 + v)
-            for i in range(1, na):
-                for j in range(i+1, na+1):
-                    u += a[i] * a[j] * sa[i, j, ii]
-            for i in range(1, nc+1):
-                for j in range(1, na+1):
-                    u += c[i] * a[j] * cc[i, j] * nzc[ii]
-            for i in range(1, nn+1):
-                u += h[i] * lc[i, ii] * 2
-            for k in range(1, nn+1):
-                for j in range(1, na+1):
-                    u += h[k] * a[j] * xi[k, ii, j]
+            for i in range(1, self.na):
+                for j in range(i+1, self.na+1):
+                    u += a[i] * a[j] * self.sa[i, j, ii]
+            for i in range(1, self.nc+1):
+                for j in range(1, self.na+1):
+                    u += c[i] * a[j] * cc[i, j] * self.nzc[ii]
+            for i in range(1, self.nn+1):
+                u += h[i] * self.lc[i, ii] * 2
+            for k in range(1, self.nn+1):
+                for j in range(1, self.na+1):
+                    u += h[k] * a[j] * self.xi[k, ii, j]
             gc[ii] = np.exp(u)
-        for jj in range(1, na+1):
-            u = nza[jj] ** 2 * f
-            for i in range(1, nc+1):
+        for jj in range(1, self.na+1):
+            u = self.nza[jj] ** 2 * f
+            for i in range(1, self.nc+1):
                 u += c[i] * (b[i, jj]) * 2 + z * cc[i, jj]
-            for i in range(1, na+1):
+            for i in range(1, self.na+1):
                 if i != jj:
                     v = 0
-                    for j in range(1, nc+1):
-                        v += c[j] * sa[jj, i, j]
+                    for j in range(1, self.nc+1):
+                        v += c[j] * self.sa[jj, i, j]
                     u += a[i] * (q[jj, i] * 2 + v)
                         
-            for i in range(1, nc):
-                for j in range(i+1, nc+1):
-                    u += c[i] * c[j] * sc[i, j, jj]
-            for i in range(1, nc+1):
-                for j in range(1, na+1):
-                    u += c[i] * a[j] * cc[i, j] * nza[jj]
-            for j in range(1, nn+1):
-                u += h[j] * la[j, jj]
-            for k in range(1, nn+1):
-                for i in range(1, nc+1):
-                    u += h[k] * c[i] * xi[k, i, jj]
+            for i in range(1, self.nc):
+                for j in range(i+1, self.nc+1):
+                    u += c[i] * c[j] * self.sc[i, j, jj]
+            for i in range(1, self.nc+1):
+                for j in range(1, self.na+1):
+                    u += c[i] * a[j] * cc[i, j] * self.nza[jj]
+            for j in range(1, self.nn+1):
+                u += h[j] * self.la[j, jj]
+            for k in range(1, self.nn+1):
+                for i in range(1, self.nc+1):
+                    u += h[k] * c[i] * self.xi[k, i, jj]
             ga[jj] = np.exp(u)
             
-        for k in range(1, nn+1):
+        for k in range(1, self.nn+1):
             u = 0
-            for i in range(1, nc+1):
-                u += c[i] * lc[k, i] * 2
-            for j in range(1, na+1):
-                u += a[j] * la[k, j] * 2
-            for i in range(1, nc+1):
-                for j in range(1, na+1):
-                    u += c[i] * a[j] * xi[k, i, j]
+            for i in range(1, self.nc+1):
+                u += c[i] * self.lc[k, i] * 2
+            for j in range(1, self.na+1):
+                u += a[j] * self.la[k, j] * 2
+            for i in range(1, self.nc+1):
+                for j in range(1, self.na+1):
+                    u += c[i] * a[j] * self.xi[k, i, j]
             gn[k] = np.exp(u)
         u = -self.ap0 * fi ** 1.5e0 / (1 + self.bp0 * fj)
-        for i in range(1, nc+1):
-            for j in range(1, na+1):
+        for i in range(1, self.nc+1):
+            for j in range(1, self.na+1):
                 u += c[i] * a[j] * (bf[i, j] + z * cc[i, j])
-        for i in range(1, nc):
-            for j in range(i+1, nc+1):
+        for i in range(1, self.nc):
+            for j in range(i+1, self.nc+1):
                 v = 0
-                for k in range(1, na+1):
-                    v += a[k] * sc[i, j, k]
+                for k in range(1, self.na+1):
+                    v += a[k] * self.sc[i, j, k]
                 u += c[i] * c[j] * (pf[i, j] + v)
-        for i in range(1, na):
-            for j in range(i+1, na+1):
+        for i in range(1, self.na):
+            for j in range(i+1, self.na+1):
                 v = 0
-                for k in range(1, nc+1):
-                    v += c[k] * sa[i, j, k]
+                for k in range(1, self.nc+1):
+                    v += c[k] * self.sa[i, j, k]
                 u += a[i] * a[j] * (qf[i, j] + v)
-        for k in range(1, nn+1):
-            for i in range(1, nc+1):
-                u += h[k] * c[i] * lc[k, i]
-        for k in range(1, nn+1):
-            for j in range(1, na+1):
-                u += h[k] * a[j] * la[k, j]
-        for k in range(1, nn+1):
-            for i in range(1, nc+1):
-                for j in range(1, na+1):
-                    u += h[k] * c[i] * a[j] * xi[k, i, j]
+        for k in range(1, self.nn+1):
+            for i in range(1, self.nc+1):
+                u += h[k] * c[i] * self.lc[k, i]
+        for k in range(1, self.nn+1):
+            for j in range(1, self.na+1):
+                u += h[k] * a[j] * self.la[k, j]
+        for k in range(1, self.nn+1):
+            for i in range(1, self.nc+1):
+                for j in range(1, self.na+1):
+                    u += h[k] * c[i] * a[j] * self.xi[k, i, j]
         
         s = 0
-        for i in range(1, nc+1):
+        for i in range(1, self.nc+1):
             s += c[i]
-        for j in range(1, na+1):
+        for j in range(1, self.na+1):
             s += a[j]
         co = 1 + 2 * u / s
         self.aw = np.exp(-s * co / self.mh2o)
@@ -705,9 +721,9 @@ class Water:
             
     def j1(self, x):
         ya, yb, yc, yd = 4.581, -0.7237, -0.012, 0.528
-        j1 = (4. + ya * x ** yb * (1. - yb - yc * yd * x ** yd) * 
+        j1 = ((4. + ya * x ** yb * (1. - yb - yc * yd * x ** yd) * 
           np.exp(yc * x ** yd)) / (4. + ya * x ** yb * 
-                                   np.exp(yc * x ** yd)) ** 2
+                                   np.exp(yc * x ** yd)) ** 2)
         return(j1)
     
     def g0(self, x):
@@ -792,9 +808,30 @@ test = Water(label='test', temp=30, dens=1, ph=6.55, na=84.5, k=3.3, li=0,
 test.actp()
 
 
+def j0(x):
+    ya, yb, yc, yd = 4.581, -0.7237, -0.012, 0.528
+    j0 = x / (4. + ya * x ** yb * np.exp(yc * x ** yd))
+    return(j0)
+        
+def j1(x):
+    ya, yb, yc, yd = 4.581, -0.7237, -0.012, 0.528
+    j1 = ((4. + ya * x ** yb * (1. - yb - yc * yd * x ** yd) * 
+      np.exp(yc * x ** yd)) / (4. + ya * x ** yb * 
+                               np.exp(yc * x ** yd)) ** 2)
+    return(j1)
+
+def g0(x):
+    g0 = 2. * (1. - (1. + x) * np.exp(-x)) / x ** 2
+    return(g0)
+        
+def g1(x):
+    g1 = -2. * (1. - (1. + x + x ** 2 / 2.) * np.exp(-x)) / x ** 2
+    return(g1)
+
+g0(1e-161)
 
 
-# b0, b1, b2, c0
+# b0, self.b1, b2, c0
 
 
 # def temperature(temp, at, bt, ct, dt, et):

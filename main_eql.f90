@@ -1521,27 +1521,41 @@ SUBROUTINE actp (molal, gact, aw, fi, temp)
       		IF (nzc(i) == nzc(j)) THEN
         		ec(i, j) = 0.; fc(i, j) = 0.
      		 ELSE
-       			 xc(i, j) = 2. * u; xc(i, i) = nzc(i) ** 2 * u; xc(j, j) = nzc(j) ** 2 * u
+       			 xc(i, j) = 2. * u; 
+       			 
+       			 xc(i, i) = nzc(i) ** 2 * u
+       			 
+       			 xc(j, j) = nzc(j) ** 2 * u
+       			 
        			 ec(i, j) = (j0(xc(i, j)) - j0(xc(i, i)) / 2. - j0(xc(j, j)) / 2.) / fi / 2.
+        		 
         		 fc(i, j) = (xc(i, j) * j1(xc(i, j)) - xc(i, i) * j1(xc(i, i)) / 2. - xc(j, j) * j1(xc(j, j)) / 2.) &
         		                    / fi ** 2 / 4. - ec(i, j) / fi
+        		 
         		 ec(j, i) = ec(i, j); fc(j, i) = fc(i, j)
+				 
 				 if(i == 1 .and. j == 4) then
 				 endif
       		END IF
   	  	ENDDO
   	ENDDO
   	DO i = 1 , na - 1
+  	
     	DO j = i + 1 , na
+    	
       		IF (nza(i) == nza(j)) THEN
        		 	ea(i, j) = 0.; fa(i, j) = 0.
+       		 	
       		ELSE
-        		xa(i, j) = 2. * u; xa(i, i) = nza(i) ** 2 * u; xa(j, j) = nza(j) ** 2 * u
+        		xa(i, j) = 2. * u; xa(i, i) = nza(i) ** 2 * u; 
+        		xa(j, j) = nza(j) ** 2 * u
         		ea(i, j) = (j0(xa(i, j)) - j0(xa(i, i)) / 2. - j0(xa(j, j)) / 2.) / fi / 2.
         		fa(i, j) = &
 				 (xa(i, j) * j1(xa(i, j)) - xa(i, i) * j1(xa(i, i)) / 2. - xa(j, j) * j1(xa(j, j)) / 2.) &
 				  / fi ** 2 / 4. - ea(i, j) / fi
-      	  		ea(j, i) = ea(i, j); fa(j, i) = fa(i, j)
+      	  		ea(j, i) = ea(i, j); 
+      	  		fa(j, i) = fa(i, j)
+      	  		
       		END IF
     	ENDDO
   	ENDDO

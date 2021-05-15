@@ -1,40 +1,9 @@
-module data_common
-	interface display
-		subroutine int_display(text,i)
-			integer, intent(out) :: i
-			character, intent(in) :: text
-		end subroutine int_display
-		subroutine real_display(text,vi)
-			real, intent(out) :: vi
-			character, intent(in) :: text
-		end subroutine real_display
-		subroutine dp_display(text,vi)
-			real(kind=8), intent(out) :: vi
-			character, intent(in) :: text
-		end subroutine dp_display
-		subroutine text_display(text,text_out)
-		character (len=*) :: text
-		character (len=*) :: text_out
-		end subroutine text_display
-	end interface
-
-	integer, parameter	:: maxlen=256, len_display=50, max_constit=30, max_nr=10, max_conv=100
-	character (len=1)	::	test_stop, DIR_SEP_S
-	character (len=5)	::	OS_S
-	integer(kind=2)	:: int2
-	integer	:: &
-		c_bwhite=15, c_yellow=14, c_lmagenta=13, c_lred=12, c_lgreen=10, c_lcyan=11, &
-		c_lblue=9, c_white=7, c_brown=6, c_red=4, c_cyan=3, c_green=2
-	real(kind=8)	:: pk
-	real(kind=8)	:: epsilon=1.D-8
-end module data_common
-
-
 SUBROUTINE actp (molal, gact, aw, fi, temp)
-	use data_common
 	implicit none
-	real(kind=8), dimension(0:*)	:: molal, gact
-	real(kind=8)	:: aw, fi, temp
+	real(kind=8), dimension(0:*), intent(in)	:: molal
+	real(kind=8), dimension(0:*), intent(out)	:: gact
+	real(kind=8), intent(in)	:: temp
+	real(kind=8), intent(out)   :: aw, fi
 
 	double precision, external	:: temperature, j0, j1, g0, g1 ! functions
 
@@ -330,3 +299,39 @@ SUBROUTINE actp (molal, gact, aw, fi, temp)
 	deallocate (gc, ga, gn, stat=alloc_res)
   
 END SUBROUTINE actp
+
+DOUBLE PRECISION FUNCTION g0 (x)
+	real(kind=8), intent(in)	:: x
+    g0 = 2 * (1 - (1 + x) * EXP(-x)) / x ** 2
+END FUNCTION g0
+
+DOUBLE PRECISION FUNCTION g1 (x)
+	real(kind=8), intent(in)	:: x
+    g1 = -2 * (1 - (1 + x + x ** 2 / 2) * EXP(-x)) / x ** 2
+END FUNCTION g1
+
+
+DOUBLE PRECISION FUNCTION j0 (x)
+    implicit none
+    real(kind=8), intent(in) :: x
+    real(kind=8)	:: ya,yb,yc,yd
+    ya = 4.581; yb = -.7237; yc = -.012; yd = .528
+    j0 = x / (4 + ya * x ** yb * EXP(yc * x ** yd))
+END FUNCTION j0
+
+DOUBLE PRECISION FUNCTION j1 (x)
+    implicit none
+    real(kind=8), intent(in) :: x
+    real(kind=8)	:: ya,yb,yc,yd,
+    ya = 4.581; yb = -.7237; yc = -.012; yd = .528
+    j1 = (4 + ya * x ** yb * (1 - yb - yc * yd * x ** yd) * EXP(yc * x ** yd)) / (4 + ya * x ** yb * EXP(yc * x ** yd)) ** 2
+END FUNCTION j1
+
+
+double precision FUNCTION temperature (at, bt, ct, dt, et, temp)
+	implicit none
+	real (kind=8), intent(in) :: at,bt,ct,dt,et,temp
+    temperature = at + bt * temp + ct * temp ** 2 + dt * temp ** 3 + et * temp ** 4
+END FUNCTION temperature
+
+
