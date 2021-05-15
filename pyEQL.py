@@ -138,7 +138,8 @@ def input_data(filepath):
     si = float(data.loc['si'][1])
     alk = float(data.loc['alk'][1])
     
-    return(Water(label, temp, dens, ph, na, k, li, ca, mg, cl, so4, no3, b, si, alk))
+    return(Water(label, temp, dens, ph, na, k, li, ca, 
+                 mg, cl, so4, no3, b, si, alk))
     
 
     
@@ -147,7 +148,8 @@ class Water:
     'Class for input waters to be used in EQL/EVP simulations'
     
     def __init__(self, label, temp, dens, ph, na, k, li, 
-                 ca, mg, cl, so4, no3, b, si, alk, unit_S="molal"):
+                 ca, mg, cl, so4, no3, b, si, alk, pc=None, 
+                 unit_S="molal"):
         self.label = label
         self.temp = temp
         self.dens = dens
@@ -163,6 +165,7 @@ class Water:
         self.b = b
         self.si = si
         self.alk = alk
+        self.pc = pc
         self.unit_S = unit_S
         
         self.tot = np.zeros(ntot+1)
