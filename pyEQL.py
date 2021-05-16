@@ -222,7 +222,7 @@ class Water:
         self.nchcat = np.zeros(max_cat+1)
         self.ani = np.zeros(max_an+1)
         self.nchani = np.zeros(max_an+1)
-        self.nconv = 0
+        self.nconv = 2
         self.pk = .1e0
         self.pk0 = .1e0
         self.pkf = .0001e0
@@ -230,6 +230,9 @@ class Water:
         self.dph = .2e0
         self.dil = 0
         self.diltot = 1
+        self.pco2_S = ""
+        self.mh2o = 55.51
+        self.eps = 1.0e-12
         
     def temperature(self, at, bt, ct, dt, et):
         return((at + bt * self.temp + ct * self.temp ** 2 + 
@@ -535,7 +538,6 @@ class Water:
                       np.zeros(self.nn+1, dtype=np.longdouble))
         
         self.bp0 = 1.2e0
-        self.mh2o = 55.51e0
         
         u, z = 0, 0
         
@@ -911,8 +913,12 @@ class Water:
             self.nchani[5] = -nch[14]
             
             self.density()
-            # Stopped at line 530 to write density method
-            self.calculate_pCO2()
+            
+    def iterate_pco2(self):
+        # Stopped at line 530 to write density method
+        self.calculate_pCO2()
+        self.iterate_molalities()
+            
             
             
     def calculate_pCO2(self):
