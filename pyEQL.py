@@ -218,6 +218,7 @@ class Water:
         self.psol = np.exp(self.mum - np.sum((wmin[:,:] * self.mu), axis=1))
         self.gact = np.zeros(n+1)
         self.molal = np.zeros(n+1)
+        self.totinit = np.zeros(n0+1)
         self.act = np.zeros(n+1)
         self.z = np.zeros((n+1, n+1))
         self.zz = np.zeros(n+1)
@@ -1043,7 +1044,7 @@ class Water:
             
             self.density()
          
-    def run_eql(self, verbose=True):
+    def run_eql(self, verbose=True, output=False):
         if verbose:
             print("\nThis is EQL..............\n")
             print(datetime.now().strftime("%a %b %d %H:%M:%S %Y"), '\n')
@@ -1058,22 +1059,53 @@ class Water:
         self.iterate_molalities(verbose=verbose)
         
         self.iterate_pco2(verbose=verbose)
+        
+        self.calculate_alkalinities()
+        
+        self.print_screen(verbose=verbose, output=output)
 
-with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-    pass
+    def calculate_alkalinities(self):
+        self.alcar = self.molal[12] + 2 * (self.molal[14] + self.molal[16] + self.molal[17])
+        self.albor = self.molal[19] + self.molal[20] + 2 * self.molal[21] + self.molal[22] + self.molal[23]
+        self.alsil = self.molal[24]
+        self.aloh = self.molal[13] + self.molal[18]
+        self.alh = -1 * self.molal[11] - self.molal[25]
+        self.altest = self.alcar + self.albor + self.alsil + self.aloh + self.alh
+        
+    def print_screen(self, verbose=True, output=False):
+        for i in range(1, n0+1):
+            self.totinit[i] = 0
+            for j in range(1, n+1):
+                self.totinit[i] += self.molal[j] * kmat[i, j]
+                
+        df1 = pd.DataFrame({"ion": aq_S[1:n0+1], 
+                            "molality": self.molal[1:n0+1], 
+                            "act coeff": self.gact[1:n0+1],
+                            "activity": self.act[1:n0+1],
+                            "molal tot": self.totinit[1:n0+1]})
+        df1 = df1.loc[df1["molality"] != 0]
+        df2 = pd.DataFrame({"ion": aq_S[n0+1:n+1], 
+                            "molality": self.molal[n0+1:n+1],
+                            "act coeff": self.gact[n0+1:n+1],
+                            "activity": self.act[n0+1:n+1]})
+        df2 = df2.loc[df2["molality"] != 0]
+        
+        
+        
+        
+        if verbose:
+            with pd.option_context('display.max_rows', None, 
+                                   'display.max_columns', None):
+                print(df1.to_string(index=False))
+                print()
+                print(df2.to_string(index=False))
+        
+        if output:
+            pd.concat([df1, df2]).to_csv("initial_solution.out")
+
+
      
 test = Water(label='test', temp=30, dens=1, ph=6.55, na=84.5, k=3.3, li=0,
              ca=2.7, mg=1.3, cl=39.5, so4=0, alk=56.2, no3=0, si=0, b=0, pc=-6.73)
-
-#test.charge_balance()
-#test.calculate_molalities()
-#test.iterate_molalities()
-
-
-#test.calculate_pCO2()
-#test.iterate_pco2()
-
-#test.iterate_molalities()
-#test.calculate_pCO2()
 
 test.run_eql()
