@@ -287,11 +287,14 @@ class Water:
             print("Sum of anions = {}".format(sa))
         
         if sc + sa != 0:
-            dca = 200 * np.abs(sc - sa) / (sc + sa)
+            self.dca = 200 * np.abs(sc - sa) / (sc + sa)
             delta = sc - sa
             self.tot[icat] = self.tot[icat] - delta / 2 / nch[icat]
             self.tot[iani] = self.tot[iani] + delta / 2 / -(nch[iani])
-            print("electrical balance = {}%".format((dca * 100 + 0.5) / 100))
+            if verbose:
+                print("electrical balance = {}%".format((self.dca * 100 + 
+                                                         0.5) / 100))
+                print()
               
     def calculate_molalities(self, verbose=True):
         self.molal[1] = self.tot[1]
@@ -357,7 +360,7 @@ class Water:
                 sc += self.molal[i] * self.nch[i]
                 if self.molal[i] * self.nch[i] > cmax:
                     cmax = self.molal[i] * self.nch[i]
-                    icat = i
+                    self.icat = i
         
         sa, amax = 0, 0
         for i in range(1, n+1):
@@ -365,11 +368,11 @@ class Water:
                 sa += self.molal[i] * -self.nch[i]
                 if self.molal[i] * -self.nch[i] > amax:
                     amax = self.molal[i] * -self.nch[i]
-                    iani = i
+                    self.iani = i
         
         delta = sc - sa
-        self.molal[icat] = self.molal[icat] - delta / 2 / nch[icat]
-        self.molal[iani] = self.molal[iani] + delta / 2 / (-nch[iani])
+        self.molal[self.icat] = self.molal[self.icat] - delta / 2 / nch[self.icat]
+        self.molal[self.iani] = self.molal[self.iani] + delta / 2 / (-nch[self.iani])
         
         sc = (self.molal[1] + self.molal[2] + self.molal[3] + 
               self.molal[4] * 2 + self.molal[5] * 2 + self.molal[11] + 
@@ -381,9 +384,9 @@ class Water:
         
         if verbose:
             print("\nSum of cations = {} corrected for {}".format(sc, 
-                                                                  aq_S[icat]))
+                                                                  aq_S[self.icat]))
             print("Sum of anions = {} corrected for {}\n".format(sa, 
-                                                                 aq_S[iani]))
+                                                                 aq_S[self.iani]))
             
         s = 0
         for i in range(1, n+1):
@@ -567,8 +570,8 @@ class Water:
         u += np.sum(a * self.nza ** 2)
         z += np.sum(a * self.nza)
 
-        fi = u / 2
-        fj = np.sqrt(fi)
+        self.fi = u / 2
+        fj = np.sqrt(self.fi)
         u = 6 * self.ap0 * fj        
         
         for i in range(1, self.nc):
@@ -583,11 +586,11 @@ class Water:
                     xc[i, i] = self.nzc[i] ** 2 * u
                     xc[j, j] = self.nzc[j] ** 2 * u
                     ec[i, j] = ((self.j0(xc[i, j]) - self.j0(xc[i, i]) / 2 - 
-                                self.j0(xc[j, j]) / 2) / fi / 2)
+                                self.j0(xc[j, j]) / 2) / self.fi / 2)
                     fc[i, j] = ((xc[i, j] * self.j1(xc[i, j]) - xc[i, i] * 
                                 self.j1(xc[i, i]) / 2 - xc[j, j] * 
-                                self.j1(xc[j, j]) / 2) / fi ** 2 / 4 - 
-                                ec[i, j] / fi)
+                                self.j1(xc[j, j]) / 2) / self.fi ** 2 / 4 - 
+                                ec[i, j] / self.fi)
                     ec[j, i] = ec[i, j]
                     fc[j, i] = fc[i, j]
                     
@@ -601,11 +604,11 @@ class Water:
                     xa[i, i] = self.nza[i] ** 2 * u
                     xa[j, j] = self.nza[j] ** 2 * u
                     ea[i, j] = (self.j0(xa[i, j]) - self.j0(xa[i, i]) / 2 -
-                                self.j0(xa[j, j]) / 2) / fi / 2
+                                self.j0(xa[j, j]) / 2) / self.fi / 2
                     fa[i, j] = ((xa[i, j] * self.j1(xa[i, j]) - xa[i, i] * 
                                 self.j1(xa[i, i]) / 2 - xa[j,j] * 
-                                self.j1(xa[j, j]) / 2) / fi ** 2 / 4 - 
-                                ea[i, j] / fi)
+                                self.j1(xa[j, j]) / 2) / self.fi ** 2 / 4 - 
+                                ea[i, j] / self.fi)
                     ea[j, i] = ea[i, j]
                     fa[j, i] = fa[i, j]
         
@@ -613,7 +616,7 @@ class Water:
             for j in range(i+1, self.nc+1):
                 pp[i, j] = fc[i, j]
                 p[i, j] = self.tc[i, j] + ec[i, j]
-                pf[i, j] = p[i, j] + pp[i, j] * fi
+                pf[i, j] = p[i, j] + pp[i, j] * self.fi
                 pp[j, i] = pp[i, j]
                 p[j, i] = p[i, j]
                 pf[j, i] = pf[i, j]
@@ -622,7 +625,7 @@ class Water:
             for j in range(i+1, self.na+1):
                 qp[i, j] = fa[i, j]
                 q[i, j] = self.ta[i, j] + ea[i, j]
-                qf[i, j] = q[i, j] + qp[i, j] * fi
+                qf[i, j] = q[i, j] + qp[i, j] * self.fi
                 qp[j, i] = qp[i, j]
                 q[j, i] = q[i, j]
                 qf[j, i] = qf[i, j]
@@ -640,7 +643,7 @@ class Water:
                 b[i, j] = (self.b0[i, j] + self.b1[i, j] * 
                            (self.g0(v)) + self.b2[i, j] * (self.g0(w)))
                 bp[i, j] = (self.b1[i, j] * (self.g1(v)) / 
-                            fi + self.b2[i, j] * (self.g1(w)) / fi)
+                            self.fi + self.b2[i, j] * (self.g1(w)) / self.fi)
         
         f = -self.ap0 * (fj / (1 + self.bp0 * fj) + 2 / self.bp0 * np.log(1 + self.bp0 * fj))
         
@@ -714,7 +717,7 @@ class Water:
                     u += c[i] * a[j] * self.xi[k, i, j]
             gn[k] = np.exp(u)
             
-        u = -self.ap0 * fi ** 1.5e0 / (1 + self.bp0 * fj)
+        u = -self.ap0 * self.fi ** 1.5e0 / (1 + self.bp0 * fj)
         for i in range(1, self.nc+1):
             for j in range(1, self.na+1):
                 u += c[i] * a[j] * (bf[i, j] + z * cc[i, j])
@@ -1078,16 +1081,16 @@ class Water:
             for j in range(1, n+1):
                 self.totinit[i] += self.molal[j] * kmat[i, j]
                 
-        df1 = pd.DataFrame({"ion": aq_S[1:n0+1], 
-                            "molality": self.molal[1:n0+1], 
+        df1 = pd.DataFrame({"molality": self.molal[1:n0+1], 
                             "act coeff": self.gact[1:n0+1],
                             "activity": self.act[1:n0+1],
-                            "molal tot": self.totinit[1:n0+1]})
+                            "molal tot": self.totinit[1:n0+1]},
+                           index =  aq_S[1:n0+1])
         df1 = df1.loc[df1["molality"] != 0]
-        df2 = pd.DataFrame({"ion": aq_S[n0+1:n+1], 
-                            "molality": self.molal[n0+1:n+1],
+        df2 = pd.DataFrame({"molality": self.molal[n0+1:n+1],
                             "act coeff": self.gact[n0+1:n+1],
-                            "activity": self.act[n0+1:n+1]})
+                            "activity": self.act[n0+1:n+1]},
+                           index = aq_S[n0+1:n+1])
         df2 = df2.loc[df2["molality"] != 0]
         
         
@@ -1096,16 +1099,69 @@ class Water:
         if verbose:
             with pd.option_context('display.max_rows', None, 
                                    'display.max_columns', None):
-                print(df1.to_string(index=False))
+                print(df1.to_string())
                 print()
-                print(df2.to_string(index=False))
+                print(df2.to_string())
+                print()
         
         if output:
             pd.concat([df1, df2]).to_csv("initial_solution.out")
 
-
+        text = ["ELECTRICAL BALANCE     = {} % corrected on {} and {}".format(self.dca, aq_S[self.icat], aq_S[self.iani]),
+                "TOTAL DISSOLVED SOLIDS = {} g/kg(H2O)".format(self.std),
+                "MOLAL/MOLAR FACTOR     = {}".format(1000 * self.dens / (1000 + self.std)),
+                "DENSITY                = {}".format(self.dens),
+                "IONIC STRENGTH         = {}".format(self.fi),
+                "WATER ACTIVITY         = {}".format(self.aw),
+                "CARBONATE ALKALINITY   = {}".format(self.alcar),
+                "BORATE ALKALINITY      = {}".format(self.albor),
+                "SILICATE ALKALINITY    = {}".format(self.alsil),
+                "OH ALKALINITY          = {}".format(self.aloh),
+                "H ALKALINITY           = {}".format(self.alh),
+                "\nTOTAL ALKALINITY       = {}".format(self.altest),
+                "init. alk.             = {}".format(self.tot[12])]
+        
+        if self.pco2_S == "" or self.pco2_S == "n":
+            text.insert(6, "pH                     = {}".format(self.ph))
+            text.insert(7, "LOG PCO2               = {}".format(self.po))
+        elif self.pco2_S == "y":
+            text.insert(6, "INITIAL LOG PCO2       = {}".format(self.poinit))
+            text.insert(7, "INITIAL pH             = {}".format(self.phinit))
+            text.insert(8, "CALCULATED LOG PCO2    = {}".format(self.po))
+            text.insert(9, "CALCULATED pH          = {}".format(self.ph))
+        
+        if self.diltot > 1:
+            text.insert(6, "DILUTION               = {}".format(self.diltot))
+            
+        if verbose:
+            for line in text:
+                print(line)
+            print()
+                
+                
+                
+        condition = np.where(self.ica==1)[0][np.where(np.where(self.ica==1)[0] <= 12)]
+        u = np.zeros(condition.shape[0])
+        for k in range(0, u.shape[0]):
+            i = condition[k] * np.ones(n, dtype=int)
+            j = np.arange(1, n+1)
+            u[k] = np.sum(self.molal[j] * kmat[i, j])
+            
+        tests = self.tot[condition]
+        d = np.zeros(condition.shape[0])
+        d[u + tests != 0] = 200 * np.abs(u - tests) / (u + tests)
+        names = np.char.upper(aq_S[condition])
+        names[-1] = "ALK"
+        
+        if verbose:
+            with pd.option_context('display.max_rows', None, 
+                                               'display.max_columns', None):
+                print(pd.DataFrame({"TESTS": names, 
+                                    "SUM OF SPECIES": u, 
+                                    "INIT CONC.": tests, 
+                                    "BALANCE %": d}).to_string(index=False))
      
 test = Water(label='test', temp=30, dens=1, ph=6.55, na=84.5, k=3.3, li=0,
              ca=2.7, mg=1.3, cl=39.5, so4=0, alk=56.2, no3=0, si=0, b=0, pc=-6.73)
 
-test.run_eql()
+test.run_eql(verbose=True)
