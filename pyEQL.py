@@ -38,6 +38,7 @@ ntot = 12
 n0 = 10
 max_cat = 5
 max_an = 5
+epsilon=1e-8
 
 
 
@@ -79,27 +80,28 @@ ion_db = ion_db.astype({'species': str,
 ion_db = pd.merge(pd.Series(aq_S, name="species"), ion_db, 
                   how="left", on="species").dropna()
 
-
 mineral_list = text[nt+2:]
 mineral_S = [i[0] for i in mineral_list]
 mineral_S.insert(0, None)
-min_db = np.zeros((nm, 5))
+min_db = np.zeros((nm+1, 5))
 
-for k in range(0, nm):
-    ncomp = int(mineral_list[k][1])
-    c_ion = np.zeros(ncomp)
-    nom_ion_S = np.empty(shape=ncomp, dtype=np.object)
-    for i in range(0, ncomp):
-        c_ion[i] = float(mineral_list[k][2+2*i])
-        nom_ion_S[i] = mineral_list[k][3+2*i]
+for k in range(1, nm+1):
+    line = text[nt+1+k]
+    mineral_S[k] = line[0]
+    ncomp = int(line[1])
+    c_ion = np.zeros(ncomp+1)
+    nom_ion_S = np.empty(ncomp+1, dtype=np.object)
+    for i in range(1, ncomp+1):
+        c_ion[i] = float(line[i*2])
+        nom_ion_S[i] = str(line[1+i*2])
+        for j in range(0, nt+1):
+            x_S = nom_ion_S[i].lower()
+            if x_S == aq_S[j]:
+                wmin[k, j] = c_ion[i]
+    (at, bt, ct, dt, et) = (float(i) for i in line[2+ncomp*2:])
+    min_db[k] = np.array([at, bt, ct, dt, et])
 
-        j = np.where(aq_S == nom_ion_S[i].lower())
-        wmin[k+1, j] = c_ion[i]
-    min_db[k, :] = [float(i) for i in mineral_list[k][(1+ncomp)*2:]]
-    
-min_db = pd.DataFrame(min_db, columns=['at', 'bt', 'ct', 'dt', 'et'])
-min_db['species'] = mineral_S[1:]
-
+min_db = pd.DataFrame(min_db, index = mineral_S, columns=['at', 'bt', 'ct', 'dt', 'et'])
 
 # LINE 260
 min_S = "murtf3"
@@ -196,26 +198,27 @@ class Water:
                               complex3['dt'] / 3000000 * self.temp ** 3 + 
                               complex3['et'] / 300000000 * self.temp ** 4).values
         self.mu = np.zeros(15)
-        self.mu = 10 ** (ion_db['at'] + 
-                         ion_db['bt'] / 300 * self.temp + 
-                         ion_db['ct'] / 30000 * self.temp ** 2 + 
-                         ion_db['dt'] / 3000000 * self.temp ** 3 + 
-                         ion_db['et'] / 300000000 * self.temp ** 4).values
+        self.mu = (ion_db['at'] + 
+                   ion_db['bt'] / 300 * self.temp + 
+                   ion_db['ct'] / 30000 * self.temp ** 2 + 
+                   ion_db['dt'] / 3000000 * self.temp ** 3 + 
+                   ion_db['et'] / 300000000 * self.temp ** 4).values
         self.mum = np.zeros(nm+1)
-        self.mum[1:] = (min_db['at'] + 
-                        min_db['bt'] / 300 * self.temp +
-                        min_db['ct'] / 30000 * temp ** 2 +
-                        min_db['dt'] / 3000000 * temp ** 3 +
-                        min_db['et'] / 300000000 * temp ** 4).values
+        self.mum = (min_db['at'] + 
+                    min_db['bt'] / 300 * self.temp +
+                    min_db['ct'] / 30000 * temp ** 2 +
+                    min_db['dt'] / 3000000 * temp ** 3 +
+                    min_db['et'] / 300000000 * temp ** 4).values
         
-        # for k in range(1, nm+1):
-        #     u = self.mum[k]
-        #     for i in range(0, nt+1):
-        #         u += wmin[k, i] * self.mu[i]
+        self.psol = np.zeros(nm+1)
+        for k in range(1, nm+1):
+            u = self.mum[k]
+            for i in range(0, nt+1):
+                u -= wmin[k, i] * self.mu[i]
                 
-        # self.psol = np.exp(u)
+            self.psol[k] = np.exp(u)
 
-        self.psol = np.exp(self.mum - np.sum((wmin[:,:] * self.mu), axis=1))
+        #self.psol = np.exp(self.mum - np.sum((wmin[:,:] * self.mu), axis=1))
         self.gact = np.zeros(n+1)
         self.molal = np.zeros(n+1)
         self.totinit = np.zeros(n0+1)
@@ -1021,7 +1024,7 @@ class Water:
                     print("Log(PCO2) calculated = {}\n".format(self.po))
                 
                 
-    def dilute_solution(self, dil=1, verbose=True):
+    def dilute_solution(self, dil=1, verbose=True, output=True):
         
         if dil > 1:
             self.diltot += dil
@@ -1029,8 +1032,8 @@ class Water:
             self.pk = self.pk0
             self.dph = 0.2
             
-            self.tot[np.arange(1, 13) != 11] = (
-                self.tot[np.arange(1, 13) != 11] / dil)
+            self.tot[np.arange(0, 13) != 11] = (
+                self.tot[np.arange(0, 13) != 11] / dil)
             
             self.cat[1:6] = self.tot[1:6]
             self.nchcat[1:6] = nch[1:6]
@@ -1046,8 +1049,162 @@ class Water:
             self.unit_S = "molal"
             
             self.density()
-         
-    def run_eql(self, verbose=True, output=False):
+            
+            # Recalculate the molalities after dilution
+            self.calculate_molalities(verbose=verbose)
+        
+            # calculate activity coefficients // 500 Loop
+            self.iterate_molalities(verbose=verbose)
+            
+            self.iterate_pco2(verbose=verbose)
+            
+            self.calculate_alkalinities()
+            
+            self.print_screen(verbose=verbose, output=output)
+            
+            self.saturation_state(verbose=verbose)
+
+    def invar(self):
+        self.kinvariant = 0
+        ncm = 14
+        nbmin = 10
+        ninvar = nbmin + 3
+        kinv = np.zeros(ninvar+1)
+        minv_S = np.empty(ninvar+1, dtype=np.object)
+        psminv = np.zeros(ninvar+1)
+        winv = np.zeros((ninvar+1, ncm+1))
+        minvar_S = np.zeros(ninvar+1)
+        psminvar = np.zeros(ninvar+1)
+        t0 = np.zeros((ninvar+1, ninvar+1))
+        t1 = np.zeros((ninvar+1, ninvar+1))
+        t2 = np.zeros((ninvar+1, ninvar+1))
+        t3 = np.zeros((ninvar+1, ncm+1))
+        t4 = np.zeros((ncm+1, ncm+1))
+        tt4 = np.zeros(ncm+1)
+        for k in range(1, 4):
+            psminv[k] = np.log10(self.psc[k])
+        winv[1, 11] = 1
+        winv[1, 13] = 1
+        winv[1, 0] = -1
+        winv[2, 11] = 1
+        winv[2, 12] = -1
+        winv[2, 14] = 1
+        winv[3, 11] = 1
+        winv[3, 12] = 1
+        winv[3, 0] = -1
+        n1 = 3
+        for k in range(1, nm+1):
+            if lmin[k] == 1:
+                n1 += 1
+                kinv[n1] = k
+                minv_S[n1] = mineral_S[k]
+                psminv[n1] = np.log10(self.psol[k])
+                for j in range(0, ncm+1):
+                    winv[n1, j] = wmin[k, j]
+        for i in range(1, n1+1):
+            winv[i, 0], winv[i, 14] = winv[i, 14], winv[i, 0]
+        for i in range(1, n1+1):
+            for j in range(i, n1+1):
+                t1[i, j] = 0
+                for k in range(0, ncm):
+                    t1[i, j] = t1[i, j] + winv[i, k] * winv[j, k]
+                    t1[j, i] = t1[i, j]
+                    t0[i, j] = t1[i, j]
+                    t0[j, i] = t0[i, j]
+        for k in range(2, n1+1):
+            for i in range(k, n1+1):
+                if np.abs(t1[i, k-1]) > epsilon:
+                    u = t1[k-1, k-1] / t1[i, k-1]
+                    for j in range(k, n1+1):
+                        t1[i, j] = t1[k-1, j] - t1[i, j] * u
+                        if np.abs(t1[i, j]) < epsilon:
+                            t1[i, j] = 0
+        det = 1
+        for i in range(1, n1+1):
+            if np.abs(t1[i, i]) < epsilon:
+                det = 0
+                break
+        if det == 0:
+            n3 = 0
+            n2 = n1 - 1
+            for kk in range(1, n1+1):
+                ii = 0
+                for i in range(1, n1+1):
+                    if i != kk:
+                        ii += 1
+                        jj = 0
+                        for j in range(1, n1+1):
+                            if j != kk:
+                                jj += 1
+                                t2[ii, jj] = t0[i, j]
+                for k in range(2, n2+1):
+                    for i in range(k, n2+1):
+                        if np.abs(t2[i, k-1]) > epsilon:
+                            u = t2[k-1, k-1] / t2[i, k-1]
+                            for j in range(k, n2+1):
+                                t2[i, j] = t2[k-1, j] - t2[i, j] * u
+                                if np.abs(t2[i, j]) < epsilon:
+                                    t2[i, j] = 0
+                det1 = 1
+                for i in range(1, n2+1):
+                    if np.abs(t2[i, i]) < epsilon:
+                        det1 = 0
+                        break
+                if det1 == 1:
+                    n3 += 1
+                    self.kinvar[n3] = kinv[kk]
+                    minvar_S[n3] = minv_S[kk]
+                    psminvar[n3] = psminv[kk]
+                    for j in range(0, ncm+1):
+                        t3[n3, j] = winv[kk, j]
+            if n3 == 0:
+                self.kinvariant = -1
+            elif n3 > 0:
+                n4 = ncm
+                for j in range(ncm, 0, -1):
+                    u = 0
+                    for i in range(1, n3+1):
+                        u += t3[i, j] ** 2
+                    if u < epsilon:
+                        for k in range(j+1, n4+1):
+                            for i in range(1, n3+1):
+                                t3[i, k-1] = t3[i, k]
+                        n4 -= 1
+                for i in range(1, n4+1):
+                    for j in range(1, n4+1):
+                        t4[i, j] = 0
+                        for k in range(1, n3+1):
+                            t4[i, j] = t4[i, j] + t3[k, i] * t3[k, j]
+                            t4[j, i] = t4[i, j]
+                for i in range(1, n4+1):
+                    tt4[i] = 0
+                    for k in range(1, n3+1):
+                        tt4[i] = tt4[i] + t3[k, i] * psminvar[k]
+                for k in range(2, n4+1):
+                    for i in range(k, n4+1):
+                        if np.abs(t4[i, k-1]) > epsilon:
+                            u = t4[k-1, k-1] / t4[i, k-1]
+                            for j in range(k, n4+1):
+                                t4[i, j] = t4[k-1, j] - t4[i, j] * u
+                                if np.abs(t4[i, j]) < epsilon:
+                                    t4[i, j] = 0
+                            tt4[i] = tt4[k-1] - tt4[i] * u
+                if np.abs(t4[n4, n4]) > epsilon:
+                    ah2o = 10 ** (tt4[n4] / t4[n4, n4])
+                    if ah2o > 1 or ah2o <= 0.01:
+                        self.kinvariant = -2
+                    else:
+                        self.kinvariant = n3
+                        for i in range(self.kinvariant, 0, -1):
+                            if self.kinvar[i] == 0:
+                                for k in range(1, self.kinvariant):
+                                    self.kinvar[k] = self.kinvar[k+1]
+                                self.kinvariant -= 1
+                elif np.abs(t4[n4, n4]) <= epsilon:
+                    self.kinvariant = -2
+
+    
+    def run_eql(self, verbose=True, output=False, classic=False, dil=1):
         if verbose:
             print("\nThis is EQL..............\n")
             print(datetime.now().strftime("%a %b %d %H:%M:%S %Y"), '\n')
@@ -1066,6 +1223,119 @@ class Water:
         self.calculate_alkalinities()
         
         self.print_screen(verbose=verbose, output=output)
+        
+        self.saturation_state(verbose=verbose)
+        
+        self.dilute_solution(dil=dil)
+        
+        # Modify mineral database
+        
+        # Modify convergence limits
+        
+        # Add heading to chemistry file
+        
+        # Write transfer information to stockage file
+        
+        # Run EVP
+        
+    def saturation_state(self, verbose=True):
+        self.kinvar = np.zeros(nt+1)
+        
+        for k in range(1, nm+1):
+            lmin[k] = 0
+        
+        if verbose:
+            print("The initial solution is oversaturated in {} mineral(s)" \
+                  " of the data base MURTF3:".format(self.nwm))
+            print()
+            
+            oversat = []
+            for k in range(1, nm+1):
+                if self.pai[k] / self.psol[k] >= 1 and nwmin[k] == 1:
+                    oversat.append([mineral_S[k], self.pai[k] / self.psol[k]])
+                    lmin[k] = 1
+            oversat = pd.DataFrame(oversat)
+            with pd.option_context('display.max_rows', None, 
+                                               'display.max_columns', None):
+                print(oversat.to_string(index=False, header=False))
+            print()
+            
+        if self.nwm > self.nminer:
+            print("VIOLATION OF THE PHASE RULE:")
+            print("The maximum number of minerals " \
+                  "allowed is {}".format(self.nminer))
+            print("The evaporation program cannot start with this paragenesis")
+            print()
+        elif self.nwm <= self.nminer:
+            self.invar()
+            if self.kinvariant > 0:
+                print("The activity of water is constrained by:")
+                print()
+                for k in range(1, self.kinvariant+1):
+                    print(mineral_S[self.kinvar[k]])
+                print()
+            elif self.kinvariant == -1:
+                print("System in thermodynamic desequilibrium")
+                print("The activity of water is constrained at "\
+                      "different values")
+                print("by more than one mineral assemblage")
+                print()
+            elif self.kinvariant == -2:
+                print("System in thermodynamic desequilibrium:")
+                print("inconsistant mineral assemblage")
+                print()
+            elif self.kinvariant == 0:
+                print("No invariant paragensis detected")
+                print()
+            
+            if self.kinvariant != 0:
+                print("The evaporation program cannot start with this "\
+                      "paragenesis")
+                print()
+                    
+            if self.kinvariant == 0 and self.nwmp > 0:
+                print("The solution is close to saturation in {} mineral(s) "\
+                      "of the data base MURTF3:".format(self.nwmp))
+                close_saturation = []
+                for k in range(1, nm+1):
+                    if (self.pai[k] / self.psol[k] >= 0.9 and 
+                        self.pai[k] / self.psol[k] < 1 and nwmin[k] == 1):
+                        
+                        close_saturation.append([mineral_S[k], self.pai[k] / self.psol[k]])
+                        lmin[k] = 1
+                        
+                close_saturation = pd.DataFrame(close_saturation)
+                with pd.option_context('display.max_rows', None, 
+                                               'display.max_columns', None):
+                    print(close_saturation.to_string(index=False, header=False))
+                print()
+                
+                self.invar()
+                
+                if self.kinvariant > 0:
+                    print("At the start of evaporation, the activity of "\
+                          "water may be constrained by: ")
+                    
+                    for k in range(1, self.kinvariant+1):
+                        print(mineral_S[self.kinvar[k]])
+                    print()
+                elif self.kinvariant == -1:
+                    print("System in thermodynamic desequilibrium")
+                    print("The activity of water is constrained at "\
+                          "different values")
+                    print("by more than one mineral assemblage")
+                elif self.kinvariant == -2:
+                    print("System in thermodynamic desequilibrium:")
+                    print("inconsistant mineral assemblage")
+                    print()
+                elif self.kinvariant == 0:
+                    print("No invariant paragensis detected")
+                    print()
+                if self.kinvariant != 0:
+                    print("If the evaporation program does not start")
+                    print("slightly dilute the solution again")
+                    
+                
 
     def calculate_alkalinities(self):
         self.alcar = self.molal[12] + 2 * (self.molal[14] + self.molal[16] + self.molal[17])
@@ -1076,6 +1346,12 @@ class Water:
         self.altest = self.alcar + self.albor + self.alsil + self.aloh + self.alh
         
     def print_screen(self, verbose=True, output=False):
+        outfile = "{}.log".format(self.label)
+        if output:
+            with open(outfile, "r+") as file:
+                file.truncate(0)
+                file.close()
+        
         for i in range(1, n0+1):
             self.totinit[i] = 0
             for j in range(1, n+1):
@@ -1093,19 +1369,20 @@ class Water:
                            index = aq_S[n0+1:n+1])
         df2 = df2.loc[df2["molality"] != 0]
         
-        
+        df = pd.concat([df1, df2])
         
         
         if verbose:
             with pd.option_context('display.max_rows', None, 
                                    'display.max_columns', None):
-                print(df1.to_string())
-                print()
-                print(df2.to_string())
+                print(df.to_string(na_rep=""))
                 print()
         
         if output:
-            pd.concat([df1, df2]).to_csv("initial_solution.out")
+            with open(outfile, "a") as file:
+                file.write(df.to_string(na_rep=""))
+                file.write("\n\n")
+                file.close()
 
         text = ["ELECTRICAL BALANCE     = {} % corrected on {} and {}".format(self.dca, aq_S[self.icat], aq_S[self.iani]),
                 "TOTAL DISSOLVED SOLIDS = {} g/kg(H2O)".format(self.std),
@@ -1137,9 +1414,15 @@ class Water:
             for line in text:
                 print(line)
             print()
-                
-                
-                
+            
+        if output:
+            with open(outfile, "a") as file:
+                for line in text:
+                    file.write(line)
+                    file.write("\n")
+                file.write("\n")
+                file.close()
+
         condition = np.where(self.ica==1)[0][np.where(np.where(self.ica==1)[0] <= 12)]
         u = np.zeros(condition.shape[0])
         for k in range(0, u.shape[0]):
@@ -1153,15 +1436,100 @@ class Water:
         names = np.char.upper(aq_S[condition])
         names[-1] = "ALK"
         
+        df = pd.DataFrame({"TESTS": names, "SUM OF SPECIES": u, 
+                           "INIT CONC.": tests, "BALANCE %": d})
+        
         if verbose:
             with pd.option_context('display.max_rows', None, 
                                                'display.max_columns', None):
-                print(pd.DataFrame({"TESTS": names, 
-                                    "SUM OF SPECIES": u, 
-                                    "INIT CONC.": tests, 
-                                    "BALANCE %": d}).to_string(index=False))
+                print(df.to_string(index=False))
+            print()
+        
+        if output:
+            with open(outfile, "a") as file:
+                file.write(df.to_string(index=False))
+                file.write("\n\n")
+                file.close()
+            
+        data_lst = []
+        
+        for i in range(13, n+1):
+            u = 0
+            if self.ica[i] == 1:
+                for j in range(0, n+1):
+                    if self.act[j] != 0:
+                        u += kmat[i, j] * np.log10(self.act[j])
+                v = np.log10(self.psc[i-12])
+                d = 200 * np.abs(u - v) / (u + v)
+                if i == 13:
+                    zone_S = "h2o"
+                else:
+                    zone_S = aq_S[i].lower()
+                data_lst.append([zone_S, u, v, d])
+        
+        df = pd.DataFrame(data_lst, columns=["", "log(IAP)", 
+                                             "log(K)", "balance %"])
+        
+        if verbose:
+            with pd.option_context('display.max_rows', None, 
+                                               'display.max_columns', None):
+                print(df.to_string(index=False))
+            print()
+            
+        if output:
+            with open(outfile, "a") as file:
+                file.write(df.to_string(index=False))
+                file.write("\n\n")
+                file.close()
+            
+        self.nwm = 0
+        self.nwmp = 0
+        
+        self.pai = np.zeros(nm+1)
+        data_lst = []
+        
+        for k in range(1, nm+1):
+            self.pai[k] = 1
+            for i in range(0, nt+1):
+                self.pai[k] = self.pai[k] * self.act[i] ** wmin[k, i]
+            if self.pai[k] != 0:
+                if nwmin[k] == 0:
+                    zone_S = " " + mineral_S[k].lower()
+                elif nwmin[k] == 1:
+                    zone_S = "*" + mineral_S[k].lower()
+                x_S = " "
+                if self.pai[k] / self.psol[k] >= 1 and nwmin[k] == 1:
+                    self.nwm += 1
+                    x_S = "*"
+                elif self.pai[k] / self.psol[k] >= 0.9 and self.pai[k] / self.psol[k] < 1 and nwmin[k] == 1:
+                    self.nwmp += 1
+                data_lst.append([zone_S, self.psol[k], self.pai[k], self.pai[k] / self.psol[k], x_S])
+        
+        df = pd.DataFrame(data_lst, columns=["", "solub prod", "ion act prod", 
+                                             "satur ratio", ""])
+                
+        if verbose:
+            with pd.option_context('display.max_rows', None, 
+                                               'display.max_columns', None):
+                print(df.to_string(index=False))
+            print()
+        
+        if output:
+            with open(outfile, "a") as file:
+                file.write(df.to_string(index=False))
+                file.write("\n\n")
+                file.close()
+                
+        if verbose and output:
+            print("LOG FILE IS {}".format(outfile))
+            print()
+            
+
      
 test = Water(label='test', temp=30, dens=1, ph=6.55, na=84.5, k=3.3, li=0,
-             ca=2.7, mg=1.3, cl=39.5, so4=0, alk=56.2, no3=0, si=0, b=0, pc=-6.73)
+             ca=2.7, mg=1.3, cl=39.5, so4=0, alk=56.2, no3=0, si=0, b=0, 
+             pc=-6.73)
 
-test.run_eql(verbose=True)
+test.run_eql(verbose=True, dil=3)
+
+#test.print_screen(output=True)
