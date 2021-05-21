@@ -177,6 +177,7 @@ class Water:
         self.tot[11] = 10 ** -self.ph
         self.tot[12] = self.alk / 1000
         
+        self.tinit = self.temp
         self.ica = np.ones(n+1)
         self.ica[0] = 0
         self.ndepact = 0
@@ -1063,6 +1064,10 @@ class Water:
             self.print_screen(verbose=verbose, output=output)
             
             self.saturation_state(verbose=verbose)
+            
+            if verbose:
+                print("The initial solution has been "\
+                      "diluted {} times".format(self.diltot))
 
     def invar(self):
         self.kinvariant = 0
@@ -1203,8 +1208,84 @@ class Water:
                 elif np.abs(t4[n4, n4]) <= epsilon:
                     self.kinvariant = -2
 
+    def modify_database(self, add_min=None, rem_min=None, verbose=True, 
+                        output=False):
+        
+        if add_min:
+            if type(add_min) is not list:
+                if type(add_min) is str:
+                    add_min = [add_min]
+                else:
+                    add_min = list(add_min)
+            add_min = [i.upper() for i in add_min]
+            am = [mineral_S.index(add_min[i]) for i in 
+                  range(0, len(add_min)) if add_min[i] in mineral_S]
+            nwmin[am] = 1
+            if verbose:
+                print("ADDING MINERALS")
+                for i in add_min:
+                    if i in mineral_S:
+                        print("{} added".format(i))
+                    else:
+                        print("{} could not be found "\
+                              "in the database".format(i))
+                print()
+        
+        if rem_min:
+            if type(rem_min) is not list:
+                if type(rem_min) is str:
+                    rem_min = [rem_min]
+                else:
+                    rem_min = list(rem_min)
+            rem_min = [i.upper() for i in rem_min]
+            rm = [mineral_S.index(rem_min[i]) for i in 
+                  range(0, len(rem_min)) if rem_min[i] in mineral_S]
+            nwmin[rm] = 0
+            if verbose:
+                print("REMOVING MINERALS")
+                for i in rem_min:
+                    if i in mineral_S:
+                        print("{} removed".format(i))
+                    else:
+                        print("{} could not be found "\
+                              "in the database".format(i))
+                print()
+
+        if add_min or rem_min:
+            murtf2 = read_file("murtf2")
+            (nc, na, a) = (int(i) for i in murtf2[0])
+            species = murtf2[1:nc+na+2]
+            minerals = murtf2[nc+na+2:]
+            minerals_on = [i for i in minerals if i[0] in 
+                           np.array(mineral_S)[nwmin == 1].tolist()]
+            nmnew = len(minerals_on)
+
+            with open("murtf0", "w") as file:
+                file.write(",".join([str(i) for i in (nc, na, nmnew)]))
+                file.write('\n')
+                for i in species:
+                    file.write(",".join(i))
+                    file.write('\n')
+                for i in minerals_on:
+                    file.write(",".join(i))
+                    file.write('\n')
+                file.close()
+                
+                self.print_screen(verbose=verbose, output=output)
+            
+                self.saturation_state(verbose=verbose)
+            
+        
     
-    def run_eql(self, verbose=True, output=False, classic=False, dil=1):
+    def run_eql(self, syst_S, unit_S, dil=1, add_min=None, rem_min=None, 
+                pkmol=None, pkeq=None, incr=0, print_step=1, output_step=1, 
+                storage_step=1, verbose=True, output=False, classic=False):
+        
+        if output_step == 0:
+            p_S = "n"
+        else:
+            p_S = "y"
+            
         if verbose:
             print("\nThis is EQL..............\n")
             print(datetime.now().strftime("%a %b %d %H:%M:%S %Y"), '\n')
@@ -1229,14 +1310,85 @@ class Water:
         self.dilute_solution(dil=dil)
         
         # Modify mineral database
-        
+        self.modify_database(add_min=add_min, rem_min=rem_min, verbose=verbose)
+
         # Modify convergence limits
+        if pkmol:
+            self.pkmol = pkmol
+        else:
+            self.pkmol = 0.001
         
-        # Add heading to chemistry file
+        if pkeq:
+            self.pkeq = pkeq
+        else:
+            self.pkeq = .0000000000001
         
-        # Write transfer information to stockage file
+        # Set files for output
+        self.chem_file = "{}.j{}&".format(self.label, syst_S)
+        self.event_file = "{}.j{}@".format(self.label, syst_S)
+        self.min_file = "{}.j{}%".format(self.label, syst_S)
+        self.transfer_file = "{}.tra".format(self.label)
         
+        # Add heading to chem_file
+        
+        constit_S = ["label", "fc", "eva", "ds", "ph", "alk"]
+        
+        for i in range(1, 9):
+            if self.tot[i] > 0:
+                constit_S.append(aq_S[i])
+        if self.tot[9] != 0:
+            constit_S.append('b')
+        if self.tot[10] != 0:
+            constit_S.append('si')
+        constit_S.append('tds')
+        
+        with open(self.chem_file, "w") as file:
+            file.write(",".join(constit_S))
+            file.write('\n')
+            file.close()
+            
+        # Write transfer file name to stockage file
+        with open("stockage", "w") as file:
+            file.write(self.transfer_file)
+            file.close()
+        
+        # Write transfer information to the transfer 
+        lines =[self.temp, self.tinit, self.ph, self.phinit, self.po, 
+                self.poinit, self.diltot]
+        for i in range(1, 11):
+            lines.append(self.tot[i])
+        lines.append(self.molal[15])
+        for i in range(1, 11):
+            lines.append(self.molal[i])
+        lines.append(self.mh2o)
+        lines.append(self.molal[13])
+        lines.append(self.molal[11])
+        lines.append(self.molal[14])
+        lines.append(self.molal[12])
+        for i in range(16, 26):
+            lines.append(self.molal[i])
+        lines.append(syst_S)
+        lines.append(incr)
+        lines.append(print_step)
+        lines.append(p_S)
+        lines.append(output_step)
+        lines.append(storage_step)
+        lines.append(unit_S)
+        lines.append(self.chem_file)
+        lines.append(self.event_file)
+        lines.append(self.min_file)
+        lines.append(min_S)
+        lines.append(self.pkmol)
+        lines.append(self.pkeq)
+        
+        lines = [str(i) for i in lines]
+        
+        with open(self.transfer_file, "w") as file:
+            file.write("\n".join(lines))
+            file.close()
+            
         # Run EVP
+    
         
     def saturation_state(self, verbose=True):
         self.kinvar = np.zeros(nt+1)
@@ -1530,6 +1682,13 @@ test = Water(label='test', temp=30, dens=1, ph=6.55, na=84.5, k=3.3, li=0,
              ca=2.7, mg=1.3, cl=39.5, so4=0, alk=56.2, no3=0, si=0, b=0, 
              pc=-6.73)
 
-test.run_eql(verbose=True, dil=3)
+am = ['CALCITE']
+rm = ['BRUCITE', 'MAGNESITE', 'HYDROMAGNESITE', 'NESQUEHONITE',
+      'ANTARCTICITE', 'ARAGONITE', 'BURKEITE', 'GLASERITE', 'DOLOMITE']
+
+test.run_eql(syst_S='c', unit_S="molal", dil=1, add_min=am, rem_min=rm, verbose=True)
+
+
+
 
 #test.print_screen(output=True)
