@@ -102,6 +102,8 @@ for k in range(1, nm+1):
     min_db[k] = np.array([at, bt, ct, dt, et])
 
 min_db = pd.DataFrame(min_db, index = mineral_S, columns=['at', 'bt', 'ct', 'dt', 'et'])
+#mineral_S = np.array(mineral_S)
+
 
 # LINE 260
 min_S = "murtf3"
@@ -1078,7 +1080,7 @@ class Water:
         minv_S = np.empty(ninvar+1, dtype=np.object)
         psminv = np.zeros(ninvar+1)
         winv = np.zeros((ninvar+1, ncm+1))
-        minvar_S = np.zeros(ninvar+1)
+        minvar_S = np.empty(ninvar+1, dtype=np.object)
         psminvar = np.zeros(ninvar+1)
         t0 = np.zeros((ninvar+1, ninvar+1))
         t1 = np.zeros((ninvar+1, ninvar+1))
@@ -1274,121 +1276,6 @@ class Water:
                 self.print_screen(verbose=verbose, output=output)
             
                 self.saturation_state(verbose=verbose)
-            
-        
-    
-    def run_eql(self, syst_S, unit_S, dil=1, add_min=None, rem_min=None, 
-                pkmol=None, pkeq=None, incr=0, print_step=1, output_step=1, 
-                storage_step=1, verbose=True, output=False, classic=False):
-        
-        if output_step == 0:
-            p_S = "n"
-        else:
-            p_S = "y"
-            
-        if verbose:
-            print("\nThis is EQL..............\n")
-            print(datetime.now().strftime("%a %b %d %H:%M:%S %Y"), '\n')
-        
-        # initial charge balance
-        self.charge_balance(verbose=verbose)
-    
-        # intial molality calculation
-        self.calculate_molalities(verbose=verbose)
-        
-        # calculate activity coefficients // 500 Loop
-        self.iterate_molalities(verbose=verbose)
-        
-        self.iterate_pco2(verbose=verbose)
-        
-        self.calculate_alkalinities()
-        
-        self.print_screen(verbose=verbose, output=output)
-        
-        self.saturation_state(verbose=verbose)
-        
-        self.dilute_solution(dil=dil)
-        
-        # Modify mineral database
-        self.modify_database(add_min=add_min, rem_min=rem_min, verbose=verbose)
-
-        # Modify convergence limits
-        if pkmol:
-            self.pkmol = pkmol
-        else:
-            self.pkmol = 0.001
-        
-        if pkeq:
-            self.pkeq = pkeq
-        else:
-            self.pkeq = .0000000000001
-        
-        # Set files for output
-        self.chem_file = "{}.j{}&".format(self.label, syst_S)
-        self.event_file = "{}.j{}@".format(self.label, syst_S)
-        self.min_file = "{}.j{}%".format(self.label, syst_S)
-        self.transfer_file = "{}.tra".format(self.label)
-        
-        # Add heading to chem_file
-        
-        constit_S = ["label", "fc", "eva", "ds", "ph", "alk"]
-        
-        for i in range(1, 9):
-            if self.tot[i] > 0:
-                constit_S.append(aq_S[i])
-        if self.tot[9] != 0:
-            constit_S.append('b')
-        if self.tot[10] != 0:
-            constit_S.append('si')
-        constit_S.append('tds')
-        
-        with open(self.chem_file, "w") as file:
-            file.write(",".join(constit_S))
-            file.write('\n')
-            file.close()
-            
-        # Write transfer file name to stockage file
-        with open("stockage", "w") as file:
-            file.write(self.transfer_file)
-            file.close()
-        
-        # Write transfer information to the transfer 
-        lines =[self.temp, self.tinit, self.ph, self.phinit, self.po, 
-                self.poinit, self.diltot]
-        for i in range(1, 11):
-            lines.append(self.tot[i])
-        lines.append(self.molal[15])
-        for i in range(1, 11):
-            lines.append(self.molal[i])
-        lines.append(self.mh2o)
-        lines.append(self.molal[13])
-        lines.append(self.molal[11])
-        lines.append(self.molal[14])
-        lines.append(self.molal[12])
-        for i in range(16, 26):
-            lines.append(self.molal[i])
-        lines.append(syst_S)
-        lines.append(incr)
-        lines.append(print_step)
-        lines.append(p_S)
-        lines.append(output_step)
-        lines.append(storage_step)
-        lines.append(unit_S)
-        lines.append(self.chem_file)
-        lines.append(self.event_file)
-        lines.append(self.min_file)
-        lines.append(min_S)
-        lines.append(self.pkmol)
-        lines.append(self.pkeq)
-        
-        lines = [str(i) for i in lines]
-        
-        with open(self.transfer_file, "w") as file:
-            file.write("\n".join(lines))
-            file.close()
-            
-        # Run EVP
-    
         
     def saturation_state(self, verbose=True):
         self.kinvar = np.zeros(nt+1)
@@ -1676,11 +1563,133 @@ class Water:
             print("LOG FILE IS {}".format(outfile))
             print()
             
+            
+            
+    def run_eql(self, syst_S, unit_S, dil=1, add_min=None, rem_min=None, 
+                pkmol=None, pkeq=None, incr=0, print_step=1, output_step=1, 
+                storage_step=1, verbose=True, output=False, classic=False):
+        
+        if output_step == 0:
+            p_S = "n"
+        else:
+            p_S = "y"
+            
+        if verbose:
+            print("\nThis is EQL..............\n")
+            print(datetime.now().strftime("%a %b %d %H:%M:%S %Y"), '\n')
+        
+        # initial charge balance
+        self.charge_balance(verbose=verbose)
+    
+        # intial molality calculation
+        self.calculate_molalities(verbose=verbose)
+        
+        # calculate activity coefficients // 500 Loop
+        self.iterate_molalities(verbose=verbose)
+        
+        self.iterate_pco2(verbose=verbose)
+        
+        self.calculate_alkalinities()
+        
+        self.print_screen(verbose=verbose, output=output)
+        
+        self.saturation_state(verbose=verbose)
+        
+        self.dilute_solution(dil=dil)
+        
+        # Modify mineral database
+        self.modify_database(add_min=add_min, rem_min=rem_min, verbose=verbose)
 
-     
+        # Modify convergence limits
+        if pkmol:
+            self.pkmol = pkmol
+        else:
+            self.pkmol = 0.001
+        
+        if pkeq:
+            self.pkeq = pkeq
+        else:
+            self.pkeq = .0000000000001
+        
+        # Set files for output
+        self.chem_file = "{}.j{}&".format(self.label, syst_S)
+        self.event_file = "{}.j{}@".format(self.label, syst_S)
+        self.min_file = "{}.j{}%".format(self.label, syst_S)
+        self.transfer_file = "{}.tra".format(self.label)
+        
+        # Add heading to chem_file
+        
+        self.constit_S = ["label", "fc", "eva", "ds", "ph", "alk"]
+        
+        for i in range(1, 9):
+            if self.tot[i] > 0:
+                self.constit_S.append(aq_S[i])
+        if self.tot[9] != 0:
+            self.constit_S.append('b')
+        if self.tot[10] != 0:
+            self.constit_S.append('si')
+        self.constit_S.append('tds')
+            
+        # Write transfer file name to stockage file
+        with open("stockage", "w") as file:
+            file.write(self.transfer_file)
+            file.close()
+        
+        # Write transfer information to the transfer 
+        lines =[self.temp, self.tinit, self.ph, self.phinit, self.po, 
+                self.poinit, self.diltot]
+        lines.append(",".join(self.constit_S))
+        for i in range(1, 11):
+            lines.append(self.tot[i])
+        lines.append(self.molal[15])
+        for i in range(1, 11):
+            lines.append(self.molal[i])
+        lines.append(self.mh2o)
+        lines.append(self.molal[13])
+        lines.append(self.molal[11])
+        lines.append(self.molal[14])
+        lines.append(self.molal[12])
+        for i in range(16, 26):
+            lines.append(self.molal[i])
+        lines.append(syst_S)
+        lines.append(incr)
+        lines.append(print_step)
+        lines.append(p_S)
+        lines.append(output_step)
+        lines.append(storage_step)
+        lines.append(unit_S)
+        lines.append(self.chem_file)
+        lines.append(self.event_file)
+        lines.append(self.min_file)
+        lines.append(min_S)
+        lines.append(self.pkmol)
+        lines.append(self.pkeq)
+        
+        lines = [str(i) for i in lines]
+        
+        with open(self.transfer_file, "w") as file:
+            file.write("\n".join(lines))
+            file.close()
+            
+        # Run EVP
+        self.run_evp()
+        
+    def run_evp(self, verbose=True):
+        pass
+        if verbose:
+            print("\nThis is EVP..............")
+            print("starting the evaporation program")
+            print(datetime.now().strftime("%a %b %d %H:%M:%S %Y"), '\n')
+            
+        
+        
+        
+    
+    
+    
 test = Water(label='test', temp=30, dens=1, ph=6.55, na=84.5, k=3.3, li=0,
              ca=2.7, mg=1.3, cl=39.5, so4=0, alk=56.2, no3=0, si=0, b=0, 
-             pc=-6.73)
+             pc=-3)
 
 am = ['CALCITE']
 rm = ['BRUCITE', 'MAGNESITE', 'HYDROMAGNESITE', 'NESQUEHONITE',
@@ -1690,5 +1699,72 @@ test.run_eql(syst_S='c', unit_S="molal", dil=1, add_min=am, rem_min=rm, verbose=
 
 
 
+# RUN EVP
+# parameters
 
-#test.print_screen(output=True)
+syst_S = 'c'
+incr = 0
+print_step = 1
+p_S = 'y'
+output_step = 1
+storage_step = 1
+unit_S = 'molal'
+
+# EVP local variables
+n=25
+ntot=12
+mh2o=55.51
+ncpt = 0
+mwev = 0
+fc = 1
+q0_S = ""
+ncomplex = 14
+
+# Read aquv data file
+text = read_file("aquv.dat")
+aq_S = np.array([line[0] for line in text])
+atom = np.array([float(line[1]) for line in text])
+nch = np.array([float(line[2]) for line in text])
+
+# Read k matrix
+text = read_file("matrice2")
+kmat = np.zeros((n+1, n+1))
+for i in range(1, n+1):
+    for j in range(1, n+1):
+        kmat[i, j] = float(text[i-1][j-1])
+
+# Write the constituent headers to the chemistry file
+with open(test.chem_file, "w") as chem_file:
+    chem_file.write(",".join(test.constit_S))
+    chem_file.write('\n')
+    chem_file.close()
+    
+# Write the first mineral events 
+with open(test.event_file, 'w') as events_file:
+    events_file.write("Temperature of solution = {} Deg C".format(test.tinit))
+    events_file.write("     ")
+    events_file.write("Temperature of simulation = {} Deg C".format(test.temp))
+    events_file.write("\n")
+    if test.diltot > 1:
+        events_file.write("The initial solution has "\
+                          "been diluted {} times".format(test.diltot))
+        events_file.write("\n")
+    if test.ph != test.phinit:
+        events_file.write("Initial Log(pco2) = {}     ".format(test.poinit))
+        events_file.write("Selected Log(pco2) = {}".format(test.po))
+        events_file.write("\n")
+        events_file.write("Initial pH = {}     ".format(test.phinit))
+        events_file.write("Calculated pH = {}".format(test.ph))
+        events_file.write("\n")
+    events_file.close()
+    
+    events_file.close()
+
+with open(test.min_file, "w") as min_file:
+    min_file.close()
+
+
+complex3 = pd.read_csv("complex3", header=None)
+complex3.columns = ['species', 'at', 'bt', 'ct', 'dt', 'et']
+
+complex3 = read_file("complex3")
