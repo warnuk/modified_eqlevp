@@ -23,7 +23,7 @@ translated in Python 3 by W. ARNUK
 import pandas as pd
 import numpy as np
 from time import perf_counter_ns
-from geochemistry import evp_actp
+from geochemistry import actp, evp_actp
 #import pyEQL
 
 def read_file(file):
@@ -314,7 +314,7 @@ sa, amax = 0, 0
 for i in range(1, n+1):
     if nch[i] < 0:
         sa += mol[i] * -nch[i]
-        if mol[i] * nch[i] > amax:
+        if mol[i] * -nch[i] > amax:
             amax = mol[i] * -nch[i]
             ia = i
 
@@ -350,7 +350,7 @@ ctot0 = mol[0] + mol[14] + mol[15] + mol[16] + mol[17]
 
 (gact, nc, na, nn, nzc, nza, ndepact, 
  ap0, bp0, mh2o, b0, b1, b2, c0, tc, 
- ta, lc, la, sc, sa, xi, fi, aw) = evp_actp(mol=mol, temp=temp)
+ ta, lc, la, sc, sa, xi, fi, aw) = evp_actp(mol, temp)
 
 for i in range(0, n+1):
     molal[i] = mol[i] * mh2o / mol[11]
