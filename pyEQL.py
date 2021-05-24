@@ -33,6 +33,11 @@ def read_file(file):
 
 #complex3 = read_file("complex3")
 
+
+
+# EQL local variables
+repinit_S, fich_S, molemin_S, fichmin_S = ".", ".", ".", "."
+nchcat, nchani = 0, 0
 n = 25
 ntot = 12
 n0 = 10
@@ -42,11 +47,6 @@ epsilon=1e-8
 
 
 
-repinit_S, fich_S, molemin_S, fichmin_S = ".", ".", ".", "."
-nchcat, nchani = 0, 0
-
-
-kmat = np.zeros((n+1, n+1))
 
 
 aqu = pd.read_csv("aqu.dat", header=None)
@@ -54,11 +54,18 @@ aq_S = aqu.iloc[:,0].values.astype(str)
 atom = aqu.iloc[:,1].values
 nch = aqu.iloc[:,2].values
 
-kmat[1:, 1:] = pd.read_csv("matrice1", header=None).values
+text = read_file("matrice1")
+kmat = np.zeros((n+1, n+1))
+for i in range(1, n+1):
+    for j in range(1, n+1):
+        kmat[i, j] = float(text[i-1][j-1])     
 kmat[13, 0], kmat[15, 0], kmat[20, 0], kmat[21, 0] = -1, -1, 3, 5
 
-complex3 = pd.read_csv("complex3", header=None)
-complex3.columns = ['species', 'at', 'bt', 'ct', 'dt', 'et']
+text = read_file("complex3")
+complex3 = pd.DataFrame([i[1:] for i in text], dtype="float64", 
+                        index=[i[0] for i in text],
+                        columns = ['at', 'bt', 'ct', 'dt', 'et'])
+
 
 text = read_file("murtf2")
 
@@ -1567,7 +1574,8 @@ class Water:
             
     def run_eql(self, syst_S, unit_S, dil=1, add_min=None, rem_min=None, 
                 pkmol=None, pkeq=None, incr=0, print_step=1, output_step=1, 
-                storage_step=1, verbose=True, output=False, classic=False):
+                storage_step=1, stdmax=0, verbose=True, output=False, 
+                classic=False):
         
         if output_step == 0:
             p_S = "n"
@@ -1599,7 +1607,8 @@ class Water:
         
         # Modify mineral database
         self.modify_database(add_min=add_min, rem_min=rem_min, verbose=verbose)
-
+        if add_min or rem_min:
+            min_S = "murtf0"
         # Modify convergence limits
         if pkmol:
             self.pkmol = pkmol
@@ -1662,6 +1671,7 @@ class Water:
         lines.append(self.event_file)
         lines.append(self.min_file)
         lines.append(min_S)
+        lines.append(stdmax)
         lines.append(self.pkmol)
         lines.append(self.pkeq)
         
@@ -1701,70 +1711,3 @@ test.run_eql(syst_S='c', unit_S="molal", dil=1, add_min=am, rem_min=rm, verbose=
 
 # RUN EVP
 # parameters
-
-syst_S = 'c'
-incr = 0
-print_step = 1
-p_S = 'y'
-output_step = 1
-storage_step = 1
-unit_S = 'molal'
-
-# EVP local variables
-n=25
-ntot=12
-mh2o=55.51
-ncpt = 0
-mwev = 0
-fc = 1
-q0_S = ""
-ncomplex = 14
-
-# Read aquv data file
-text = read_file("aquv.dat")
-aq_S = np.array([line[0] for line in text])
-atom = np.array([float(line[1]) for line in text])
-nch = np.array([float(line[2]) for line in text])
-
-# Read k matrix
-text = read_file("matrice2")
-kmat = np.zeros((n+1, n+1))
-for i in range(1, n+1):
-    for j in range(1, n+1):
-        kmat[i, j] = float(text[i-1][j-1])
-
-# Write the constituent headers to the chemistry file
-with open(test.chem_file, "w") as chem_file:
-    chem_file.write(",".join(test.constit_S))
-    chem_file.write('\n')
-    chem_file.close()
-    
-# Write the first mineral events 
-with open(test.event_file, 'w') as events_file:
-    events_file.write("Temperature of solution = {} Deg C".format(test.tinit))
-    events_file.write("     ")
-    events_file.write("Temperature of simulation = {} Deg C".format(test.temp))
-    events_file.write("\n")
-    if test.diltot > 1:
-        events_file.write("The initial solution has "\
-                          "been diluted {} times".format(test.diltot))
-        events_file.write("\n")
-    if test.ph != test.phinit:
-        events_file.write("Initial Log(pco2) = {}     ".format(test.poinit))
-        events_file.write("Selected Log(pco2) = {}".format(test.po))
-        events_file.write("\n")
-        events_file.write("Initial pH = {}     ".format(test.phinit))
-        events_file.write("Calculated pH = {}".format(test.ph))
-        events_file.write("\n")
-    events_file.close()
-    
-    events_file.close()
-
-with open(test.min_file, "w") as min_file:
-    min_file.close()
-
-
-complex3 = pd.read_csv("complex3", header=None)
-complex3.columns = ['species', 'at', 'bt', 'ct', 'dt', 'et']
-
-complex3 = read_file("complex3")
