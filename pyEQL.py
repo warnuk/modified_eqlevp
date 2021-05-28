@@ -1707,7 +1707,7 @@ rm = ['BRUCITE', 'MAGNESITE', 'HYDROMAGNESITE', 'NESQUEHONITE',
 
 test.run_eql(syst_S='c', unit_S="molal", dil=1, add_min=am, rem_min=rm, verbose=True)
 
-
-
+test.charge_balance()
+test.calculate_molalities()
 # RUN EVP
 # parameters
