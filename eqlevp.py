@@ -71,7 +71,7 @@ class simulation:
             
             self.modify_database(add_min=add_minerals, 
                                  rem_min=rem_minerals, 
-                                 verbose=verbose)
+                                 verbose=verbose, output=output)
             
             if add_minerals or rem_minerals:
                 self.min_S = "murtf0"
@@ -147,7 +147,7 @@ class simulation:
                 file.close()
                 
             # Run EVP
-            self.run_evp()
+            self.run_evp(verbose=verbose)
 
     def initialize_eql(self, verbose):
         # Set parameters for simulation
@@ -215,6 +215,9 @@ class simulation:
         
         # Set initial temperature to input temperature
         self.tinit = self.temp
+        
+        # Get number of components
+        self.nminer = np.count_nonzero(self.tot[1:11])+1
 
         # Read aqu database
         aqu = read_file("aqu.dat")
@@ -1090,6 +1093,7 @@ class simulation:
             with open(outfile, "r+") as file:
                 file.truncate(0)
                 file.close()
+            self.log_file = outfile
         
         for i in range(1, self.n0+1):
             self.totinit[i] = 0
@@ -1273,14 +1277,310 @@ class simulation:
             print()
     
     def saturation_state(self, verbose):
-        pass
+        self.kinvar = np.zeros(self.nt+1)
+        
+        for k in range(1, self.nm+1):
+            self.lmin[k] = 0
+        
+        if verbose:
+            print("The initial solution is oversaturated in {} mineral(s)" \
+                  " of the data base MURTF3:".format(self.nwm))
+            print()
+            
+            oversat = []
+            for k in range(1, self.nm+1):
+                if self.pai[k] / self.psol[k] >= 1 and self.nwmin[k] == 1:
+                    oversat.append([self.mineral_S[k], self.pai[k] / self.psol[k]])
+                    self.lmin[k] = 1
+            oversat = pd.DataFrame(oversat)
+            with pd.option_context('display.max_rows', None, 
+                                               'display.max_columns', None):
+                print(oversat.to_string(index=False, header=False))
+            print()
+            
+        if self.nwm > self.nminer:
+            print("VIOLATION OF THE PHASE RULE:")
+            print("The maximum number of minerals " \
+                  "allowed is {}".format(self.nminer))
+            print("The evaporation program cannot start with this paragenesis")
+            print()
+        elif self.nwm <= self.nminer:
+            self.invar()
+            if self.kinvariant > 0:
+                print("The activity of water is constrained by:")
+                print()
+                for k in range(1, self.kinvariant+1):
+                    print(self.mineral_S[self.kinvar[k]])
+                print()
+            elif self.kinvariant == -1:
+                print("System in thermodynamic desequilibrium")
+                print("The activity of water is constrained at "\
+                      "different values")
+                print("by more than one mineral assemblage")
+                print()
+            elif self.kinvariant == -2:
+                print("System in thermodynamic desequilibrium:")
+                print("inconsistant mineral assemblage")
+                print()
+            elif self.kinvariant == 0:
+                print("No invariant paragensis detected")
+                print()
+            
+            if self.kinvariant != 0:
+                print("The evaporation program cannot start with this "\
+                      "paragenesis")
+                print()
+                    
+            if self.kinvariant == 0 and self.nwmp > 0:
+                print("The solution is close to saturation in {} mineral(s) "\
+                      "of the data base MURTF3:".format(self.nwmp))
+                close_saturation = []
+                for k in range(1, self.nm+1):
+                    if (self.pai[k] / self.psol[k] >= 0.9 and 
+                        self.pai[k] / self.psol[k] < 1 and self.nwmin[k] == 1):
+                        
+                        close_saturation.append([self.mineral_S[k], self.pai[k] / self.psol[k]])
+                        self.lmin[k] = 1
+                        
+                close_saturation = pd.DataFrame(close_saturation)
+                with pd.option_context('display.max_rows', None, 
+                                               'display.max_columns', None):
+                    print(close_saturation.to_string(index=False, header=False))
+                print()
+                
+                self.invar()
+                
+                if self.kinvariant > 0:
+                    print("At the start of evaporation, the activity of "\
+                          "water may be constrained by: ")
+                    
+                    for k in range(1, self.kinvariant+1):
+                        print(self.mineral_S[self.kinvar[k]])
+                    print()
+                elif self.kinvariant == -1:
+                    print("System in thermodynamic desequilibrium")
+                    print("The activity of water is constrained at "\
+                          "different values")
+                    print("by more than one mineral assemblage")
+                elif self.kinvariant == -2:
+                    print("System in thermodynamic desequilibrium:")
+                    print("inconsistant mineral assemblage")
+                    print()
+                elif self.kinvariant == 0:
+                    print("No invariant paragensis detected")
+                    print()
+                if self.kinvariant != 0:
+                    print("If the evaporation program does not start")
+                    print("slightly dilute the solution again")
         
     def dilute_solution(self, dilute):
         pass
         
-    def modify_database(self, add_min, rem_min, verbose):
-        pass
+    def modify_database(self, add_min, rem_min, verbose, output):
+        minerals = self.mineral_S.astype(str).tolist()
+        if add_min:
+            if type(add_min) is not list:
+                if type(add_min) is str:
+                    add_min = [add_min]
+                else:
+                    add_min = list(add_min)
+            add_min = [i.upper() for i in add_min]
+            am = [minerals.index(add_min[i]) for i in 
+                  range(0, len(add_min)) if add_min[i] in minerals]
+            self.nwmin[am] = 1
+            if verbose:
+                print("ADDING MINERALS")
+                for i in add_min:
+                    if i in minerals:
+                        print("{} added".format(i))
+                    else:
+                        print("{} could not be found "\
+                              "in the database".format(i))
+                print()
+        
+        if rem_min:
+            if type(rem_min) is not list:
+                if type(rem_min) is str:
+                    rem_min = [rem_min]
+                else:
+                    rem_min = list(rem_min)
+            rem_min = [i.upper() for i in rem_min]
+            rm = [minerals.index(rem_min[i]) for i in 
+                  range(0, len(rem_min)) if rem_min[i] in minerals]
+            self.nwmin[rm] = 0
+            if verbose:
+                print("REMOVING MINERALS")
+                for i in rem_min:
+                    if i in minerals:
+                        print("{} removed".format(i))
+                    else:
+                        print("{} could not be found "\
+                              "in the database".format(i))
+                print()
+
+        if add_min or rem_min:
+            murtf2 = read_file("murtf2")
+            (nc, na, a) = (int(i) for i in murtf2[0])
+            species = murtf2[1:nc+na+2]
+            minerals = murtf2[nc+na+2:]
+            minerals_on = [i for i in minerals if i[0] in 
+                           self.mineral_S[self.nwmin == 1].tolist()]
+            nmnew = len(minerals_on)
+
+            with open("murtf0", "w") as file:
+                file.write(",".join([str(i) for i in (nc, na, nmnew)]))
+                file.write('\n')
+                for i in species:
+                    file.write(",".join(i))
+                    file.write('\n')
+                for i in minerals_on:
+                    file.write(",".join(i))
+                    file.write('\n')
+                file.close()
+                
+                self.print_screen(verbose=verbose, output=output)
             
+                self.saturation_state(verbose=verbose)
+                
+    def invar(self):
+        self.kinvariant = 0
+        ncm = 14
+        nbmin = 10
+        ninvar = nbmin + 3
+        kinv = np.zeros(ninvar+1)
+        minv_S = np.empty(ninvar+1, dtype=np.object)
+        psminv = np.zeros(ninvar+1)
+        winv = np.zeros((ninvar+1, ncm+1))
+        minvar_S = np.empty(ninvar+1, dtype=np.object)
+        psminvar = np.zeros(ninvar+1)
+        t0 = np.zeros((ninvar+1, ninvar+1))
+        t1 = np.zeros((ninvar+1, ninvar+1))
+        t2 = np.zeros((ninvar+1, ninvar+1))
+        t3 = np.zeros((ninvar+1, ncm+1))
+        t4 = np.zeros((ncm+1, ncm+1))
+        tt4 = np.zeros(ncm+1)
+        for k in range(1, 4):
+            psminv[k] = np.log10(self.psc[k])
+        winv[1, 11] = 1
+        winv[1, 13] = 1
+        winv[1, 0] = -1
+        winv[2, 11] = 1
+        winv[2, 12] = -1
+        winv[2, 14] = 1
+        winv[3, 11] = 1
+        winv[3, 12] = 1
+        winv[3, 0] = -1
+        n1 = 3
+        for k in range(1, self.nm+1):
+            if self.lmin[k] == 1:
+                n1 += 1
+                kinv[n1] = k
+                minv_S[n1] = self.mineral_S[k]
+                psminv[n1] = np.log10(self.psol[k])
+                for j in range(0, ncm+1):
+                    winv[n1, j] = self.wmin[k, j]
+        for i in range(1, n1+1):
+            winv[i, 0], winv[i, 14] = winv[i, 14], winv[i, 0]
+        for i in range(1, n1+1):
+            for j in range(i, n1+1):
+                t1[i, j] = 0
+                for k in range(0, ncm):
+                    t1[i, j] = t1[i, j] + winv[i, k] * winv[j, k]
+                    t1[j, i] = t1[i, j]
+                    t0[i, j] = t1[i, j]
+                    t0[j, i] = t0[i, j]
+        for k in range(2, n1+1):
+            for i in range(k, n1+1):
+                if np.abs(t1[i, k-1]) > self.epsilon:
+                    u = t1[k-1, k-1] / t1[i, k-1]
+                    for j in range(k, n1+1):
+                        t1[i, j] = t1[k-1, j] - t1[i, j] * u
+                        if np.abs(t1[i, j]) < self.epsilon:
+                            t1[i, j] = 0
+        det = 1
+        for i in range(1, n1+1):
+            if np.abs(t1[i, i]) < self.epsilon:
+                det = 0
+                break
+        if det == 0:
+            n3 = 0
+            n2 = n1 - 1
+            for kk in range(1, n1+1):
+                ii = 0
+                for i in range(1, n1+1):
+                    if i != kk:
+                        ii += 1
+                        jj = 0
+                        for j in range(1, n1+1):
+                            if j != kk:
+                                jj += 1
+                                t2[ii, jj] = t0[i, j]
+                for k in range(2, n2+1):
+                    for i in range(k, n2+1):
+                        if np.abs(t2[i, k-1]) > self.epsilon:
+                            u = t2[k-1, k-1] / t2[i, k-1]
+                            for j in range(k, n2+1):
+                                t2[i, j] = t2[k-1, j] - t2[i, j] * u
+                                if np.abs(t2[i, j]) < self.epsilon:
+                                    t2[i, j] = 0
+                det1 = 1
+                for i in range(1, n2+1):
+                    if np.abs(t2[i, i]) < self.epsilon:
+                        det1 = 0
+                        break
+                if det1 == 1:
+                    n3 += 1
+                    self.kinvar[n3] = kinv[kk]
+                    minvar_S[n3] = minv_S[kk]
+                    psminvar[n3] = psminv[kk]
+                    for j in range(0, ncm+1):
+                        t3[n3, j] = winv[kk, j]
+            if n3 == 0:
+                self.kinvariant = -1
+            elif n3 > 0:
+                n4 = ncm
+                for j in range(ncm, 0, -1):
+                    u = 0
+                    for i in range(1, n3+1):
+                        u += t3[i, j] ** 2
+                    if u < self.epsilon:
+                        for k in range(j+1, n4+1):
+                            for i in range(1, n3+1):
+                                t3[i, k-1] = t3[i, k]
+                        n4 -= 1
+                for i in range(1, n4+1):
+                    for j in range(1, n4+1):
+                        t4[i, j] = 0
+                        for k in range(1, n3+1):
+                            t4[i, j] = t4[i, j] + t3[k, i] * t3[k, j]
+                            t4[j, i] = t4[i, j]
+                for i in range(1, n4+1):
+                    tt4[i] = 0
+                    for k in range(1, n3+1):
+                        tt4[i] = tt4[i] + t3[k, i] * psminvar[k]
+                for k in range(2, n4+1):
+                    for i in range(k, n4+1):
+                        if np.abs(t4[i, k-1]) > self.epsilon:
+                            u = t4[k-1, k-1] / t4[i, k-1]
+                            for j in range(k, n4+1):
+                                t4[i, j] = t4[k-1, j] - t4[i, j] * u
+                                if np.abs(t4[i, j]) < self.epsilon:
+                                    t4[i, j] = 0
+                            tt4[i] = tt4[k-1] - tt4[i] * u
+                if np.abs(t4[n4, n4]) > self.epsilon:
+                    ah2o = 10 ** (tt4[n4] / t4[n4, n4])
+                    if ah2o > 1 or ah2o <= 0.01:
+                        self.kinvariant = -2
+                    else:
+                        self.kinvariant = n3
+                        for i in range(self.kinvariant, 0, -1):
+                            if self.kinvar[i] == 0:
+                                for k in range(1, self.kinvariant):
+                                    self.kinvar[k] = self.kinvar[k+1]
+                                self.kinvariant -= 1
+                elif np.abs(t4[n4, n4]) <= self.epsilon:
+                    self.kinvariant = -2
+                    
     def temperature(self, at, bt, ct, dt, et):
         return((at + bt * self.temp + ct * self.temp ** 2 + 
                 dt * self.temp ** 3 + et * self.temp ** 4))
@@ -1306,12 +1606,251 @@ class simulation:
         return(g1)
         
 
-
-
-
+    def run_evp(self, verbose):
         
+        if verbose:
+            print("\nThis is EVP..............\n")
+            print("STARTING THE EVAPORATION PROGRAM\n")
+            print(datetime.now().strftime("%a %b %d %H:%M:%S %Y"), '\n')
+            print()
+        pass
+        
+    
+    def initialize_evp(self, verbose):
+        # temporary parameters for testing
+        self.output_step = 1
+        self.print_step = 1
+        self.increment = 0
+        
+        
+        # Set parameters for simulation
+        self.ncpt = 0
+        self.mwev = 0
+        self.fc = 1
+        self.q0_S = ""
+        self.n = 25
+        self.ntot = 12
+        self.ncomplex = 14
+        self.mh2o = 55.51
+        
+        # Initialize blank arrays
+        self.totinit = np.zeros(self.ntot+1)
+        self.tot0 = np.zeros(self.ntot+1)
+        self.totest = np.zeros(self.ntot+1)
+        self.psc = np.zeros(self.ncomplex+1)
+        
+        # Initialize blank arrays
+        self.nch = np.zeros(self.n+1)
+        self.mol = np.zeros(self.n+1)
+        self.mol0 = np.zeros(self.n+1)
+        self.mol1 = np.zeros(self.n+1)
+        self.molal = np.zeros(self.n+1)
+        self.molal0 = np.zeros(self.n+1)
+        self.act = np.zeros(self.n+1)
+        self.act0 = np.zeros(self.n+1)
+        self.gact0 = np.zeros(self.n+1)
+        self.gact1 = np.zeros(self.n+1)
+        self.aq_S = np.empty(self.n+1, np.object)
+        self.atom = np.zeros(self.n+1)
+        self.kmat = np.zeros((self.n+1, self.n+1))
+
+        # Read aquv database
+        aquv = read_file("aquv.dat")
+        self.aq_S[:] = [line[0].lstrip() for line in aquv]
+        self.atom[:] = [line[1] for line in aquv]
+        self.nch[:] = [line[2] for line in aquv]
+
+        # Read kmat from matrice2
+        self.kmat[1:,1:] = [line[:] for line in read_file("matrice2")]
+
+        # transfer output from EQL into input for EVP
+        self.totinit[1:11] = self.tot[1:11]
+        self.mol[0] = self.molal[15]
+        self.mol[1:11] = self.molal[1:11]
+        self.mol[11] = self.mh2o
+        self.mol[12] = self.molal[13]
+        self.mol[13] = self.molal[11]
+        self.mol[14] = self.molal[14]
+        self.mol[15] = self.molal[12]
+        self.mol[16:26] = self.molal[16:26]
+        
+        # Set the increment mode (automatic or manual)
+        if self.increment == 0:
+            self.inc_S = "auto"
+        else:
+            self.inc_S = "manu"
+        
+        # Set the initial increment to the input increment
+        self.inc0 = self.increment
+        
+        # Turn on all components by setting them to 1
+        self.ica[1:self.n+1] = 1
+        
+        # Write the heading into the chemistry file
+        with open(self.chem_file, "w") as file:
+            file.write(",".join(self.constit_S))
+            file.write("\n")
+            file.close()
+            
+        # Write the initial events into the events file
+        with open(self.event_file, 'w') as file:
+            file.write("Temperature of solution = {} Deg C".format(self.tinit))
+            file.write("     ")
+            file.write("Temperature of simulation = {} Deg C".format(self.temp))
+            file.write("\n")
+            if self.diltot > 1:
+                file.write("The initial solution has "\
+                                  "been diluted {} times".format(self.diltot))
+                file.write("\n")
+            if self.ph != self.phinit:
+                file.write("Initial Log(pco2) = {}     ".format(self.poinit))
+                file.write("Selected Log(pco2) = {}".format(self.po))
+                file.write("\n")
+                file.write("Initial pH = {}     ".format(self.phinit))
+                file.write("Calculated pH = {}".format(self.ph))
+                file.write("\n")
+            file.close()
+        
+        # Clear the mineral file by opening it in write mode
+        with open(self.min_file, "w") as file:
+            file.close()
+        
+        
+        
+        
+        # BELOW THIS LINE IS OLD CODE FROM EQL METHOD. MAKE SURE TO UPDATE 
+        # Read thermodynamic data for dissociation coefficients from complex3
+        complex3 = np.zeros((self.ncomplex+1, 5))
+        complex3[1:,:] = [i[1:] for i in read_file("complex3")]
+        self.psc[:] = 10 ** (complex3[:,0] + 
+                             complex3[:,1] / 300 * self.temp + 
+                             complex3[:,2] / 30000 * self.temp ** 2 + 
+                             complex3[:,3] / 3000000 * self.temp ** 3 + 
+                             complex3[:,4] / 300000000 * self.temp ** 4)
+        self.psc[0] = 0
+
+        # Read eql mineral database from murtf2
+        murtf2 = read_file("murtf2")
+        (self.nc, self.na, self.nm) = (int(i) for i in murtf2[0])
+        self.nt = self.nc + self.na
+        
+        self.wmin = np.zeros((self.nm+1, self.nt+1))
+        self.lmin = np.zeros(self.nm+1)
+        self.nwmin = np.zeros(self.nm+1)
+        self.mineral_S = np.empty(self.nm+1, np.object)
+        self.mu = np.zeros(self.nt+1)
+        self.psol = np.zeros(self.nm+1)
+        self.pai = np.zeros(self.nm+1)
+        self.kinvar = np.zeros(self.nt+1)
+        
+        ion_list = murtf2[1:self.nt+2]
+        ion_list.insert(0, None)
+        
+        for i in range(1, self.nt+2):
+            a_S = str(ion_list[i][0]).lower()
+            (at, bt, ct, dt, et) = (float(x) for x in ion_list[i][1:])
+            for j in range(0, self.nt+1):
+                if a_S == str(self.aq_S[j]):
+                    self.mu[j] = (at + 
+                                  bt / 300 * self.temp + 
+                                  ct / 30000 * self.temp ** 2 + 
+                                  dt / 3000000 * self.temp ** 3 + 
+                                  et / 300000000 * self.temp ** 4)
+
+        mineral_list = murtf2[self.nt+2:]
+        mineral_list.insert(0, None)
+        min_db = np.zeros((self.nm+1, 5))
+        
+        self.mineral_S = np.empty(self.nm+1, np.object)
+    
+        for k in range(1, self.nm+1):
+            line = mineral_list[k]
+            self.mineral_S[k] = line[0]
+            ncomp = int(line[1])
+            c_ion = np.zeros(ncomp+1)
+            nom_ion_S = np.empty(ncomp+1, dtype=np.object)
+            for i in range(1, ncomp+1):
+                c_ion[i] = float(line[i*2])
+                nom_ion_S[i] = str(line[1+i*2])
+                for j in range(0, self.nt+1):
+                    x_S = nom_ion_S[i].lower()
+                    if x_S == self.aq_S[j]:
+                        self.wmin[k, j] = c_ion[i]
+                        
+            (at, bt, ct, dt, et) = (float(i) for i in line[2+ncomp*2:])
+            min_db[k] = np.array([at, bt, ct, dt, et])
+        
+        self.mum = (min_db[:,0] + 
+                    min_db[:,1] / 300 * self.temp + 
+                    min_db[:,2] / 30000 * self.temp ** 2 + 
+                    min_db[:,3] / 3000000 * self.temp ** 3 + 
+                    min_db[:,4] / 300000000 * self.temp ** 4)
+          
+        for k in range(1, self.nm+1):
+            u = self.mum[k]
+            for i in range(0, self.nt+1):
+                u -= self.wmin[k, i] * self.mu[i]
+            self.psol[k] = np.exp(u)
+    
+        # Charge Balance the initial water chemistry
+        sc, cmax = 0, 0
+        for i in range(1, self.ntot+1):
+            if self.nch[i] > 0 and i != 11:
+                sc += self.tot[i] * self.nch[i]
+                if self.tot[i] * self.nch[i] > cmax:
+                    cmax = self.tot[i] * self.nch[i]
+                    icat = i
+        sa, amax = 0, 0
+        for i in range(1, self.ntot+1):
+            if self.nch[i] < 0:
+                sa += self.tot[i] * -self.nch[i]
+                if self.tot[i] * -self.nch[i] > amax:
+                    amax = self.tot[i] * -self.nch[i]
+                    iani = i
+        
+        if sc + sa != 0:
+            self.dca = 200 * np.abs(sc-sa) / (sc+sa)
+        else:
+            self.dca = 0
+        delta = sc-sa
+        
+        if verbose:
+            print("sum of cations = {}".format(sc))
+            print("sum of anions = {}".format(sa))
+            print("Electrical balance = {} %".format((self.dca * 100 + 
+                                                      0.5) / 100))
+            
+        self.tot[icat] = self.tot[icat] - delta / 2 / self.nch[icat]
+        self.tot[iani] = self.tot[iani] + delta / 2 / -self.nch[iani]
+        
+        self.tot0[1:13] = self.tot[1:13]
+
+        # Set the default mineral database to murtf3
+        self.min_S = "murtf3"
+        murtf3 = read_file(self.min_S)
+        
+        self.nc, self.na, self.nm0 = [int(i) for i in murtf3[0]]
+        
+        self.mineral0_S = np.empty(self.nm0+1, np.object)
+        
+        self.mineral0_S[1:] = [i[0] for i in murtf3[(2+self.nc+self.na):]]
+        self.nwmin[np.in1d(self.mineral_S, self.mineral0_S)] = 1
+        
+        return()
+
+from time import perf_counter
+        
+
+t1 = perf_counter()
+
 test = simulation(label='test', temp=30, dens=1, ph=6.55, na=84.5, k=3.3, li=0,
                   ca=2.7, mg=1.3, cl=39.5, so4=0, alk=56.2, no3=0, si=0, b=0)
 
-test.run_eql(-3, "c", verbose=False, call_evp=False)
+test.run_eql(-3, "c", add_minerals=['dolomite'], 
+             rem_minerals=['calcite', 'nesquehonite', 
+                           'magnesite', 'hydromagnesite'], 
+             verbose=True, call_evp=True)
 
+t2 = perf_counter()
+
+print(t2-t1)
