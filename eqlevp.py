@@ -52,7 +52,7 @@ class simulation:
             print("\nThis is EQL..............\n")
             print(datetime.now().strftime("%a %b %d %H:%M:%S %Y"), '\n')
 
-        self.initialize_eql(verbose=verbose)
+        self.initialize_eql(system=system, verbose=verbose, output=output)
 
         self.calculate_molalities(verbose=verbose)
 
@@ -87,10 +87,8 @@ class simulation:
             else:
                 self.pkeq = .0000000000001
 
-            self.chem_file = "{}.j{}&".format(self.label, system)
-            self.event_file = "{}.j{}@".format(self.label, system)
-            self.min_file = "{}.j{}%".format(self.label, system)
-            self.transfer_file = "{}.tra".format(self.label)
+            
+            
 
             # Add heading to chem_file
             self.constit_S = ["label", "fc", "eva", "ds", "ph", "alk"]
@@ -158,7 +156,22 @@ class simulation:
             # Run EVP
             self.run_evp(verbose=verbose)
 
-    def initialize_eql(self, verbose):
+    def initialize_eql(self, system, verbose, output):
+        
+        # Initialize files used by EQL/EVP
+        if output:
+                self.log_file = "{}.log".format(self.label)
+                self.chem_file = "{}.j{}&".format(self.label, system)
+                self.event_file = "{}.j{}@".format(self.label, system)
+                self.min_file = "{}.j{}%".format(self.label, system)
+                self.transfer_file = "{}.tra".format(self.label)
+                
+                for filename in [self.log_file, self.chem_file, 
+                                 self.event_file, self.min_file, 
+                                 self.transfer_file]:
+                    with open(filename, "w") as file:
+                        file.close()
+        
         # Set parameters for simulation
         self.n = 25
         self.ntot = 12
@@ -1473,13 +1486,6 @@ class simulation:
         self.altest = self.alcar + self.albor + self.alsil + self.aloh + self.alh
 
     def print_screen(self, verbose=True, output=False):
-        outfile = "{}.log".format(self.label)
-        if output:
-            with open(outfile, "r+") as file:
-                file.truncate(0)
-                file.close()
-            self.log_file = outfile
-
         for i in range(1, self.n0+1):
             self.totinit[i] = 0
             for j in range(1, self.n+1):
@@ -1507,7 +1513,7 @@ class simulation:
                 print()
 
         if output:
-            with open(outfile, "a") as file:
+            with open(self.log_file, "a") as file:
                 file.write(df.to_string(na_rep=""))
                 file.write("\n\n")
                 file.close()
@@ -1544,7 +1550,7 @@ class simulation:
             print()
 
         if output:
-            with open(outfile, "a") as file:
+            with open(self.log_file, "a") as file:
                 for line in text:
                     file.write(line)
                     file.write("\n")
@@ -1583,7 +1589,7 @@ class simulation:
             print()
 
         if output:
-            with open(outfile, "a") as file:
+            with open(self.log_file, "a") as file:
                 file.write(df.to_string(index=False))
                 file.write("\n\n")
                 file.close()
@@ -1614,7 +1620,7 @@ class simulation:
             print()
 
         if output:
-            with open(outfile, "a") as file:
+            with open(self.log_file, "a") as file:
                 file.write(df.to_string(index=False))
                 file.write("\n\n")
                 file.close()
@@ -1652,13 +1658,13 @@ class simulation:
             print()
 
         if output:
-            with open(outfile, "a") as file:
+            with open(self.log_file, "a") as file:
                 file.write(df.to_string(index=False))
                 file.write("\n\n")
                 file.close()
 
         if verbose and output:
-            print("LOG FILE IS {}".format(outfile))
+            print("LOG FILE IS {}".format(self.log_file))
             print()
 
     def saturation_state(self, verbose):
@@ -2077,13 +2083,13 @@ class simulation:
         self.ica[1:self.n+1] = 1
 
         # Write the heading into the chemistry file
-        with open(self.chem_file, "w") as file:
+        with open(self.chem_file, "a") as file:
             file.write(",".join(self.constit_S))
             file.write("\n")
             file.close()
 
         # Write the initial events into the events file
-        with open(self.event_file, 'w') as file:
+        with open(self.event_file, 'a') as file:
             file.write("Temperature of solution = {} Deg C".format(self.tinit))
             file.write("     ")
             file.write("Temperature of simulation = {} Deg C".format(self.temp))
@@ -2102,7 +2108,7 @@ class simulation:
             file.close()
 
         # Clear the mineral file by opening it in write mode
-        with open(self.min_file, "w") as file:
+        with open(self.min_file, "a") as file:
             file.close()
 
 
@@ -2145,8 +2151,8 @@ class simulation:
         self.lmin0 = np.zeros(self.nm+1)
         self.lmin1 = np.zeros(self.nm+1)
 
-        self.minerals = np.zeros(self.nm+1)
-        self.minerals0 = np.zeros(self.nm+1)
+        self.min = np.zeros(self.nm+1)
+        self.min0 = np.zeros(self.nm+1)
         self.minp = np.zeros(self.nm+1)
         self.minp0 = np.zeros(self.nm+1)
 
@@ -2274,7 +2280,107 @@ class simulation:
             if self.lmin[k] == 1:
                 self.psol[k] = self.pai[k]
                 
-        
+    def loop_500(self, verbose, output):
+        while True:
+            ncmpt = 0
+            ix, iy = 1, 2
+            initdeseq = 0
+            if self.mwev == 0:
+                for k in range(1, self.nm+1):
+                    if self.psol[k] > self.psol0[k]:
+                        initdeseq = 1
+                if initdeseq == 1:
+                    for k in range(1, self.nm+1):
+                        if self.psol[k] * 0.95 > self.psol0[k]:
+                            self.psol[k] *= 0.95
+                            
+                            if verbose:
+                                print(self.mineral_S[k], self.psol[k], self.pso0[k])
+                        elif self.psol[k] * 0.95 <= self.psol0[k]:
+                            self.psol[k] = self.psol0[k]
+            
+            nw = 1
+            while nw != 0:
+                
+                ncmpt += 1
+                m0_S = "_".join(self.mineral_S[self.lmin == 1])
+                
+                self.gact1 = self.gact
+                self.evp_actp()
+                
+                if self.kinvariant == 0:
+                    self.gact = ((self.gact + self.gact1 * ix) / iy)
+                
+                self.molal = self.mol * self.mh2o / self.mol[11]
+                self.act = self.molal * self.gact
+                
+                for k in range(1, self.nm+1):
+                    self.pai[k] = 1
+                    for i in range(1, self.ncm+1):
+                        self.pai[k] *= self.act[i] ** self.wmin[k, i]
+                    
+                    if self.pai[k] >= self.psol[k]:
+                        if self.min[k] >= 0:
+                            self.lmin[k] = 1
+                        elif self.min[k] < 0:
+                            self.lmin[k] = 0
+                            self.min[k] = 0
+                    elif self.pai[k] < self.psol[k]:
+                        if self.min[k] <= 0:
+                            self.lmin[k] = 0
+                            self.min[k] = 0
+                        elif self.min[k] > 0:
+                            self.lmin[k] = 1
+                
+                for k in range(1, self.nm+1):
+                    if self.psol[k] == 1e50:
+                        if self.pai[k] < self.psol0[k] * 0.9:
+                            self.linvar[k] = 0
+                        elif self.pai[k] >= self.psol0[k]:
+                            self.linvar = 1
+                
+                nminer = np.count_nonzero(self.lmin == 1)
+                mineraux_S = "_".join(self.mineral_S[self.lmin == 1])
+                
+                if self.ncpt == 1 or self.ncpt % self.output_step == 0:
+                    if nminer == 0:
+                        print(ncmpt, "No_minerals")
+                    else:
+                        print(ncmpt, mineraux_S)
+                
+                if (self.mwev > 0 and self.fc != 1 and 
+                    nminer - self.nminer0 >= 2):
+                    
+                    self.xi /= 2
+                    
+                    if self.xi < self.epsilon:
+                        if verbose:
+                            print()
+                            print("Program unstable")
+                            print("Restart the initialization "\
+                                  "program (EQL...)")
+                            print("and lower the limits of convergence")
+                        
+                        if output:
+                            with open(self.event_file, 'a') as file:
+                                file.write("Program unstable\n")
+                                file.write("Restart the initialization "\
+                                           "program (EQL...)\n")
+                                file.write("and lower the limits "\
+                                           "of convergence\n")
+                                file.close()
+                    
+                            self.compact()
+                    
+                        self.stop_simulation()
+                        
+    def compact(self):
+        pass
+    
+    def stop_simulation(self):
+        pass
+                
+
 
 if __name__ == "__main__":
     from time import perf_counter
@@ -2288,7 +2394,7 @@ if __name__ == "__main__":
                  rem_minerals=['calcite', 'nesquehonite',
                                'magnesite', 'hydromagnesite'],
                  verbose=True, call_evp=True)
-    
+     
     t2 = perf_counter()
     
     print(t2-t1)
