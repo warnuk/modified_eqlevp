@@ -2339,17 +2339,17 @@ class simulation:
                         elif self.pai[k] >= self.psol0[k]:
                             self.linvar = 1
                 
-                nminer = np.count_nonzero(self.lmin == 1)
+                self.nminer = np.count_nonzero(self.lmin == 1)
                 mineraux_S = "_".join(self.mineral_S[self.lmin == 1])
                 
                 if self.ncpt == 1 or self.ncpt % self.output_step == 0:
-                    if nminer == 0:
+                    if self.nminer == 0:
                         print(ncmpt, "No_minerals")
                     else:
                         print(ncmpt, mineraux_S)
                 
                 if (self.mwev > 0 and self.fc != 1 and 
-                    nminer - self.nminer0 >= 2):
+                    self.nminer - self.nminer0 >= 2):
                     
                     self.xi /= 2
                     
@@ -2374,6 +2374,125 @@ class simulation:
                     
                         self.stop_simulation()
                         
+                        return
+                        
+                    if verbose:
+                        print("reduction at increment {}".format(self.xi))
+                    
+                    self.mol = self.mol0
+                    self.tot = self.tot0
+                    self.lmin = self.lmin0
+                    self.min = self.min0
+                    self.minp = self.minp0
+                    
+                    self.mwev = self.mwev0
+                    self.nminer = self.nminer0
+                    self.mwev += self.mol[11] * self.xi
+                    self.tot[11] -= 2 * self.mol[11] * self.xi
+                    
+                    # start the loop over, exit the parent call when done
+                    self.loop_500(verbose, output)
+                    return
+                
+                if self.nminer > 1 and mineraux_S != m0_S:
+                    ix, iy = 2, 3
+                    self.invar()
+                    
+                    if self.kinvariant > 0:
+                        if self.system == "o":
+                            for i in range(1, self.kinvariant+1):
+                                if (self.minp[self.kinvar[i]] == 0 and
+                                    self.min[self.kinvar[i]] == 0):
+                                        self.kneug = self.kinvar[i]
+                            
+                            self.loop_2000()
+                            return
+                    
+                        elif self.system == "c":
+                            self.mol = self.mol0
+                            self.molal = self.molal0
+                            self.gact = self.gact0
+                            self.act = self.act0
+                        
+                            self.tot = self.tot0
+                            self.pai = self.pai0
+                            self.min = self.min0
+                            
+                            self.mwev = self.mwev0
+                            self.nminer = self.nminer0
+                            self.fi = self.fi0
+                            
+                self.mol1 = self.mol
+                
+                if self.kinvariant == 0:
+                    self.reseq()
+                    
+                elif self.kinvariant > 0:
+                    self.reseqinv()
+                    self.mwev += self.xinv/2
+                    self.tot[11] -= self.xinv
+                
+                self.mol[0] = (self.mol[15] * self.gact[15] * self.mol[13] * 
+                               self.gact[13] / self.mol[11] / self.gact[11] / 
+                               self.psc3 / self.gact[0])
+            
+                self.nw = 0
+                
+                for i in range(1, self.n+1):
+                    if self.mol[i] > 0:
+                        if (200 * np.abs(self.mol[i] - self.mol1[i]) / 
+                            (self.mol[i] + self.mol1[i]) > self.pkmol):
+                            
+                            self.nw = 1
+                            
+                self.ki = self.kinvariant
+                
+                if self.kinvariant > 0:
+                    for k in range(1, self.kinvariant+1):
+                        if self.min[self.kinvar[k]] <= 0:
+                            self.lmin[self.kinvar[k]] = 0
+                            self.min[self.kinvar[k]] = 0
+                            self.psol[self.kinvar[k]] = 1e+50
+                            self.mwev += self.mol[11] * self.xi
+                            self.tot[11] -= 2 * self.mol[11] * self.xi
+                            self.ki, self.nw = 0, 1
+                            
+                self.kinvariant = self.ki
+                
+                if self.nw == 1:
+                    self.mol = (self.mol + self.mol1) / 2
+                
+                if self.ncmpt == 500:
+                    if verbose:
+                        print()
+                        print("Program unstable")
+                        print("Restart the initialization program (EQL...)")
+                        print("and lower the limits of convergence.")
+                        print("Set the increment in manual mode at a lower "\
+                              "value than .5")
+                    if output:
+                        with open(self.event_file, 'a') as file:
+                            file.write("Program unstable\n")
+                            file.write("Restart the initialization "\
+                                       "program (EQL...)\n")
+                            file.write("and lower the limits of "\
+                                       "convergence.\n")
+                            file.write("Set the increment in manual mode "\
+                                       "at a lower value than .5\n")
+                            file.close()
+                    
+                        self.compact()
+                    
+                    self.stop_simulation()
+                    
+                    return
+                
+                # LINE 568
+                    
+    
+    def loop_2000(self):
+        pass
+    
     def compact(self):
         pass
     
