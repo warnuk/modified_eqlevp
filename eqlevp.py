@@ -2282,14 +2282,14 @@ class simulation:
                 
     def loop_500(self, verbose, output):
         while True:
-            ncmpt = 0
+            self.ncmpt = 0
             ix, iy = 1, 2
-            initdeseq = 0
+            self.initdeseq = 0
             if self.mwev == 0:
                 for k in range(1, self.nm+1):
                     if self.psol[k] > self.psol0[k]:
-                        initdeseq = 1
-                if initdeseq == 1:
+                        self.initdeseq = 1
+                if self.initdeseq == 1:
                     for k in range(1, self.nm+1):
                         if self.psol[k] * 0.95 > self.psol0[k]:
                             self.psol[k] *= 0.95
@@ -2299,11 +2299,11 @@ class simulation:
                         elif self.psol[k] * 0.95 <= self.psol0[k]:
                             self.psol[k] = self.psol0[k]
             
-            nw = 1
-            while nw != 0:
+            self.nw = 1
+            while self.nw != 0:
                 
-                ncmpt += 1
-                m0_S = "_".join(self.mineral_S[self.lmin == 1])
+                self.ncmpt += 1
+                self.m0_S = "_".join(self.mineral_S[self.lmin == 1])
                 
                 self.gact1 = self.gact
                 self.evp_actp()
@@ -2340,13 +2340,13 @@ class simulation:
                             self.linvar = 1
                 
                 self.nminer = np.count_nonzero(self.lmin == 1)
-                mineraux_S = "_".join(self.mineral_S[self.lmin == 1])
+                self.mineraux_S = "_".join(self.mineral_S[self.lmin == 1])
                 
                 if self.ncpt == 1 or self.ncpt % self.output_step == 0:
                     if self.nminer == 0:
-                        print(ncmpt, "No_minerals")
+                        print(self.ncmpt, "No_minerals")
                     else:
-                        print(ncmpt, mineraux_S)
+                        print(self.ncmpt, self.mineraux_S)
                 
                 if (self.mwev > 0 and self.fc != 1 and 
                     self.nminer - self.nminer0 >= 2):
@@ -2394,7 +2394,7 @@ class simulation:
                     self.loop_500(verbose, output)
                     return
                 
-                if self.nminer > 1 and mineraux_S != m0_S:
+                if self.nminer > 1 and self.mineraux_S != self.m0_S:
                     ix, iy = 2, 3
                     self.invar()
                     
@@ -2487,8 +2487,283 @@ class simulation:
                     
                     return
                 
-                # LINE 568
+            # LINE 568
+            for k in range(1, self.nm+1):
+                if self.psol[k] == 1e+50 and self.linvar[k] == 0:
+                    self.psol[k] = self.psol0[k]
+                    if verbose:
+                        print("resetting: {}".format(self.mineral_S[k]))
+                self.linvar[k] = 0
+            
+            self.npasi += 1
+            self.npasf += 1
+            self.ncpt += 1
+            
+            if self.system == "o":
+                for k in range(1, self.nm+1):
+                    self.minp[k] += self.min[k]
+                
+                for i in range(1, 11):
+                    for k in range(1, self.nm+1):
+                        self.tot[i] -= self.wmin[k, i] * self.min[k]
+                
+                for j in range(1, self.ncm+1):
+                    for k in range(1, self.nm+1):
+                        self.tot[11] -= (self.wmin[k, j] * 
+                                         self.kmat[11, j] * 
+                                         self.min[k])
+                
+                for i in range(1, self.ntot):
+                    self.totest[i] = 0
+                    for j in range(1, self.n+1):
+                        self.totest[i] += self.kmat[i, j] * self.mol[j]
+                
+                self.totinit[12] = 0
+                self.totest[12] = 0
+                for j in range(1, self.n+1):
+                    if self.kmat[12, j] > 0:
+                        self.totest[12] += self.kmat[12, j] * self.mol[j]
+                    elif self.kmat[12, j] < 0:
+                        self.totinit[12] += self.kmat[12, j] * self.mol[j]
+                self.totinit[12] = -self.totinit[12]
+                
+                for i in range(1, 11):
+                    for k in range(1, self.nm+1):
+                        if self.system == "c":
+                            self.totest[i] += self.min[k] * self.wmin[k, i]
+                        if self.system == "o":
+                            self.totest[i] += self.minp[k] * self.wmin[k, i]
+                
+                for j in range(1, self.ncm+1):
+                    for k in range(1, self.nm+1):
+                        if self.system == "c":
+                            self.totest[11] += (self.wmin[k, j] * 
+                                                self.kmat[11, j] * 
+                                                self.min[k])
+                        if self.system == "o":
+                            self.totest[11] += (self.wmin[k, j] * 
+                                                self.kmat[11, j] * 
+                                                self.minp[k])
+                            
+                self.totest += self.mwev * 2
+                
+                self.density() # CHECK TO MAKE SURE THIS IS DEFINED CORRECTLY
+                
+                self.fc = self.mh2o / self.mol[11]
+                self.alc = (self.molal[12] - self.molal[13] + 
+                            self.molal[14] * 2 + self.molal[15] + 
+                            (self.molal[16] + self.molal[17]) * 2)
+                self.alc += (self.molal[18] + self.molal[19] + 
+                             self.molal[20] + self.molal[21] * 2)
+                self.alc += (self.molal[22] + self.molal[23] + 
+                             self.molal[24] - self.molal[25])
+                
+                self.std = (np.sum(self.molal[1:] * self.atom[1:]) - 
+                            self.molal[11] * self.atom[11])
+                
+                self.ee = 1000000e0 * self.dens / (1000e0 + self.std)
+                
+                self.hco3 = 0
+                self.co3 = 0
+                for k in range(1, self.nm+1):
+                    if self.system == "c":
+                        self.hco3 += self.wmin[k, 15] * self.min[k]
+                        self.co3 += self.wmin[k, 14] * self.min[k]
+                    elif self.system == "o":
+                        self.hco3 += self.wmin[k, 15] * self.minp[k]
+                        self.co3 += self.wmin[k, 14] * self.minp[k]
+                
+                self.ctot = (self.mol[0] + self.mol[14] + self.mol[15] + 
+                             self.mol[16] + self.mol[17] + 
+                             self.hco3 + self.co3)
+                
+                self.my_S = "_".join(self.mineral_S[(self.lmin == 1) | 
+                                                    (self.min != 0)])
+                
+                self.loop_600()
+                
                     
+    
+    def loop_600(self, verbose, output):
+        
+        if self.ncpt == 1 or self.ncpt % self.output_step == 0:
+            
+            min_name = []
+            moles_prec = []
+            moles_1 = []
+            moles_tot = []
+            tests = []
+            
+            if self.nminer > 0:
+                for i in range(1, self.nm+1):
+                    if self.lmin[i] == 1 or self.min[i] != 0:
+                        
+                        u = (200 * np.abs(self.pai[i] - self.psol[i]) / 
+                             (self.pai[i] + self.psol[i]))
+                        
+                        if self.system == "c":
+                            if self.min[i] > self.min0[i]:
+                                x_S = "{} {}".format(self.mineral_S[i], "P")
+                            elif self.min[i] < self.min0[i]:
+                                x_S = "{} {}".format(self.mineral_S[i], "D")
+                            elif self.min[i] == self.min0[i]:
+                                x_S = "{} {}".format(self.mineral_S[i], "=")
+                                
+                            min_name.append(x_S)
+                            moles_prec.append(self.min[i])
+                            tests.append(u)
+                            
+                        else:
+                            x_S = self.mineral_S[i]
+                            min_name.append(x_S)
+                            moles_1.append(self.min[i])
+                            moles_tot.append(self.minp[i])
+                            tests.append(u)
+                            
+                if self.system == "c":
+                    db1 = pd.DataFrame(data={" ": min_name,
+                                             "MOLES PREC": moles_prec,
+                                             "TESTS": u})
+                else:
+                    db1 = pd.DataFrame(data={" ": min_name,
+                                             "MOLES 1 STEP": moles_1,
+                                             "MOLES TOT": moles_tot,
+                                             "TESTS": tests})
+                    
+                if verbose:
+                    with pd.option_context('display.max_rows', None,
+                                           'display.max_columns', None):
+                        print(db1.to_string(index=False))
+                    print()
+                    
+                    
+                if output:
+                    with open(self.log_file, 'a') as file:
+                        file.write("\n")
+                        with pd.option_context('display.max_rows', None,
+                                           'display.max_columns', None):
+                            file.write(db1.to_string(index=False))
+                        file.write("\n")
+                        file.close()
+            if self.my_S == '': 
+                if verbose:
+                    print("No_minerals")
+                    
+                if output:
+                    with open(self.log_file, 'a') as file:
+                        file.write("No_minerals")
+                        file.write("\n")
+                        file.close()
+            
+            species = []
+            moles =[]
+            molalities = []
+            act_coef = []
+            molal_tot = []
+            tests = []
+            
+            for i in range(1, self.ntot+1):
+                if self.tot[i] > 0 or i == 12:
+                    u = (200 * np.abs(self.totest[i] - self.totinit[i]) / 
+                         (self.totest[i] + self.totinit[i]))
+                    
+                    species.append(self.aq_S[i])
+                    moles.append(self.mol[i])
+                    molalities.append(self.molal[i])
+                    act_coef.append(self.gact[i])
+                    tests.append(u)
+                    
+                    if i <= 10:
+                        s = 0
+                        for j in range(1, self.n+1):
+                            s += self.molal[j] * self.kmat[i, j]
+                        molal_tot.append(s)
+                    else:
+                        molal_tot.append(np.nan)
+            
+            for i in range(self.ntot+1, self.n+1):
+                if self.mol[i] > 0:
+                    p = 1
+                    for j in range(1, self.n+1):
+                        p *= self.act[j] ** self.kmat[i, j]
+                    u = (200 * np.abs(p - self.psc[i-12]) / 
+                         (p + self.psc[i-12]))
+                    species.append(self.aq_S[i])
+                    moles.append(self.mol[i])
+                    molalities.append(self.molal[i])
+                    act_coef.append(self.gact[i])
+                    tests.append(u)
+                    molal_tot.append(np.nan)
+            
+            self.pco = np.log10(self.act[15] * self.act[13] / self.act[11] / 
+                                self.psc3 / self.psc[14])
+            u = (200 * np.abs(self.pco - self.po) / (self.pco + self.po))
+            
+            species.append(self.aq_S[0])
+            moles.append(self.mol[0])
+            molalities.append(self.molal[0])
+            act_coef.append(self.gact[0])
+            tests.append(u)
+            molal_tot.append(np.nan)
+            
+            db2 = pd.DataFrame(data={" ": species,
+                                     "MOLES": moles,
+                                     "MOLALITIES": molalities,
+                                     "ACT COEFF": act_coef,
+                                     "MOLAL TOT": molal_tot,
+                                     "TESTS": tests})
+            
+            if verbose:
+                    with pd.option_context('display.max_rows', None,
+                                           'display.max_columns', None):
+                        print(db2.to_string(index=False, na_rep=""))
+                    print()
+                    
+                    
+            if output:
+                with open(self.log_file, 'a') as file:
+                    file.write("\n")
+                    with pd.option_context('display.max_rows', None,
+                                       'display.max_columns', None):
+                        file.write(db2.to_string(index=False, na_rep=""))
+                    file.write("\n")
+                    file.close()
+                    
+            lines = []
+            lines.append("concentration factor = {}".format(self.fc))
+            lines.append("ionic strength       = {}".format(self.fi))
+            lines.append("salinity (g/kg)      = {}".format(self.std))
+            lines.append("activity of water    = {}".format(self.act[11]))
+            lines.append("water evapor. (mol)  = {}".format(self.mwev))
+            lines.append("pH                   = {}".format(-np.log10(self.act[13])))
+            lines.append("CO2 exchanged (mol)  = {}".format(self.ctot - self.ctot0))
+            lines.append("alkalinity (eq/kg)   = {}".format(self.alc))
+            lines.append("Log PCO2             = {}".format(self.pco))
+            lines.append("number of steps      = {}".format(self.ncpt))
+            lines.append("molal/molar factor   = {}".format(self.ee / 1000))
+            if self.kinvariant == 0:
+                lines.append("increment (%)        = {}".format(self.xi * 100))
+            else:
+                lines.append("increment (moles)    = {}".format(self.xinv))
+            lines.append("density              = {}".format(self.dens))
+            
+            if verbose:
+                for line in lines:
+                    print(line)
+                print()
+            
+            if output:
+                with open(self.log_file, 'a') as file:
+                    for line in lines:
+                        file.write(line)
+                        file.write("\n")
+                    file.write("\n")
+                    file.close()
+            
+        # LINE 842
+        if output:
+            pass
+            
     
     def loop_2000(self):
         pass
