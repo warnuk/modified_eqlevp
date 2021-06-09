@@ -2547,7 +2547,7 @@ class simulation:
                             
                 self.totest += self.mwev * 2
                 
-                self.density() # CHECK TO MAKE SURE THIS IS DEFINED CORRECTLY
+                self.evp_density()
                 
                 self.fc = self.mh2o / self.mol[11]
                 self.alc = (self.molal[12] - self.molal[13] + 
@@ -2765,15 +2765,205 @@ class simulation:
             pass
             
     
-    def loop_2000(self):
-        pass
+    def loop_2000(self, verbose):
+        
+        if verbose:
+            print("Free energy minimization")
+        
+        if self.kinvariant == 2:
+            if (self.wmin[self.kinvar[1], self.ncm] > 
+                self.wmin[self.kinvar[2], self.ncm]):
+                
+                self.ksupprim = self.kinvar[1]
+            else:
+                self.ksupprim = self.kinvar[2]
+        elif self.kinvariant > 2:
+            gmin = 0
+            for ii in range(1, self.kinvariant+1):
+                self.mol = self.mol0
+                self.tot[1:] = self.tot0[1:]
+                
+                self.mwev += self.mol[11] * self.xi
+                self.tot[11] -= 2 * self.mol[11] * self.xi
+                
+                self.lmin[1:] = self.lmin0[1:]
+                self.min[1:] = self.min0[1:]
+                self.minp[1:] = self.minp0[1:]
+                
+                if (self.kinvar[ii] > 0 and 
+                    self.kinvar[ii] != self.kneuf and 
+                    self.min[self.kinvar[ii]] >= 0):
+                    
+                    l = self.lmin[self.kinvar[ii]]
+                    m = self.min[self.kinvar[ii]]
+                    p = self.psol[self.kinvar[ii]]
+                    
+                    self.lmin[self.kinvar[ii]] = 0
+                    self.min[self.kinvar[ii]] = 0
+                    self.psol[self.kinvar[ii]] = 1e+50
+                    
+                    if verbose:
+                        print("mineral removed: {}"\
+                              "".format(self.mineral_S[self.kinvar[ii]]))
+                    
+                    self.ncmptinv = 0
+                    self.nw = 1
+                    while self.nw != 0:
+                        self.ncmptiv += 1
+                        
+                        self.gact0 = self.gact
+                        self.evp_actp()
+                        self.gact = (self.gact0 + self.gact) / 2
+                        self.molal = self.mol * self.mh2o / self.mol[11]
+                        self.act = self.molal * self.gact
+                        
+                        for k in range(1, self.nm+1):
+                            self.pai[k] = 1
+                            for i in range(1, self.ncm+1):
+                                self.pai[k] *= self.act[i] ** self.wmin[k, i]
+                            
+                            if self.pai[k] >= self.psol[k]:
+                                if self.min[k] >= 0:
+                                    self.lmin[k] = 1
+                                elif self.min[k] < 0:
+                                    self.lmin[k] = 0
+                                    self.min[k] = 0
+                            elif self.pai[k] < self.psol[k]:
+                                if self.min[k] <= 0:
+                                    self.lmin[k] = 0
+                                    self.min[k] = 0
+                                elif self.min[k] > 0:
+                                    self.lmin[k] = 1
+
+                        self.nminer = np.count_nonzero(self.lmin == 1)
+                        self.mineraux_S = "_".join(self.mineral_S[self.lmin == 1])
+                    
+                    if verbose:
+                        print(ncmptinv, self.mineraux_S)
+                        
+                    self.mol1 = self.mol
+                    
+                    self.reseq()
+                    
+                    self.molal = self.mol * self.mh2o / self.mol[11]
+                    
+                    self.nw = 0
+                    for i in range(0, self.n+1):
+                        if np.abs(self.mol1[i] - self.mol[i]) > self.pkmol:
+                            self.nw = 1
+                    
+                    g = 0
+                    for i in range(0, self.ncm+1):
+                        if self.mol[i] > 0:
+                            g += self.mol[i] * self.mu[i] + np.log(self.act[i])
+                    for k in range(1, self.nm+1):
+                        g += self.min[k] * self.mum[k]
+                    
+                    if verbose:
+                        print("g = {}".format(g))
+                    
+                        for i in range(1, self.kinvariant):
+                            if i != ii:
+                                print(self.mineral_S[self.kinvar[i]])
+                        
+                        print()
+                    
+                    if g < gmin:
+                        gmin = g
+                        self.ksupprim = self.kinvar[ii]
+                    
+                    self.lmin[self.kinvar[ii]] = l
+                    self.min[self.kinvar[ii]] = m
+                    self.psol[self.kinvar[ii]] = p
+                    
+        self.mol = self.mol[0]
+        self.tot[1:] = self.tot0[1:]
+        self.lmin[1:] = self.lmin0[1:]
+        self.min[1:] = self.min0[1:]
+        self.minp[1:] = self.minp0[1:]
+        
+        self.mwev = self.mwev0
+        self.nminer = self.nminer0
+        self.mwev += self.mol[11] * self.xi
+        self.tot[11] -= 2 * self.mol[11] * self.xi
+        self.kinvariant = 0
+        self.lmin[self.ksupprim] = 0
+        self.min[self.ksupprim] = 0
+        self.psol[self.ksupprim] = 1e+50
+        self.min0[self.ksupprim] = 0
+        
+        if verbose:
+            print("mineral definitely removed: {}"\
+                  "".format(self.mineral_S[self.ksupprim]))
+        
+        self.loop_500(verbose, output)
+        
+        return
     
     def compact(self):
         pass
     
     def stop_simulation(self):
         pass
+    
+    def reseq(self):
+        pass
+    
+    def reseqinv(self):
+        pass
+    
+    def peritec(self):
+        pass
+    
+    def evp_invar(self):
+        pass
+    
+    def evp_density(self):
+        ncdens, nadens = 5, 5
+        s = np.zeros((ncdens+1, nadens+1))
+        cat, ic = np.zeros(ncdens+1), np.zeros(ncdens+1)
+        ani, ia = np.zeros(nadens+1), np.zeros(nadens+1)
+        
+        for i in range(1, 9):
+            if i <= ncdens:
+                cat[i] = self.mol[i] / self.mol[11] * self.mh2o
+            if i > ncdens:
+                ani[i-ncdens] = self.mol[i] / self.mol[11] * self.mh2o
                 
+        ani[4] = self.mol[15] / self.mol[11] * self.mh2o
+        ani[5] = self.mol[14] / self.mol[11] * self.mh2o
+        
+        for i in range(1, ncdens+1):
+            ic[i] = self.nch[i]
+        for i in range(1, 4):
+            ia[i] = -self.nch[i+5]
+        ia[4] = -self.nch[15]
+        ia[5] = -self.nch[14]
+        
+        if self.ncpt == 1:
+            (self.au, self.bu) = (np.zeros((ncdens+1, nadens+1)), 
+                                    np.zeros((ncdens+1, nadens+1)))
+    
+            densite = read_file("densite")
+            
+            index = 0
+            
+            for i in range(1, 6):
+                for j in range(1, 6):
+                    (au, bu) = densite[index, 3:]
+                    self.au[i, j], self.bu[i, j] = au, bu
+                    index += 1
+            
+        dens, u = 1, 0
+        for j in range(1, nadens+1):
+            u += ani[j] * ia[j]
+        for i in range(1, ncdens+1):
+            for j in range(1, nadens+1):
+                s[i, j] = int((ic[i] + ia[j]) / 2) * cat[i] * ani[j] / u
+    
+                dens += self.au[i, j] * s[i, j] + self.bu[i, j] * s[i, j] ** 2
+    
+        return
 
 
 if __name__ == "__main__":
