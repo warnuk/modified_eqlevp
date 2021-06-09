@@ -2425,7 +2425,7 @@ class simulation:
                 self.mol1 = self.mol
                 
                 if self.kinvariant == 0:
-                    self.reseq()
+                    self.reseq(verbose, output)
                     
                 elif self.kinvariant > 0:
                     self.reseqinv()
@@ -2839,7 +2839,7 @@ class simulation:
                         self.mineraux_S = "_".join(self.mineral_S[self.lmin == 1])
                     
                     if verbose:
-                        print(ncmptinv, self.mineraux_S)
+                        print(self.ncmptinv, self.mineraux_S)
                         
                     self.mol1 = self.mol
                     
@@ -2906,7 +2906,7 @@ class simulation:
     def stop_simulation(self):
         pass
     
-    def reseq(self):
+    def reseq(self, verbose, output):
         
         z = np.zeros((self.n+self.nminer+1, self.n+self.nminer+1))
         zz = np.zeros(self.n+self.nminer+1)
@@ -3179,7 +3179,59 @@ class simulation:
         return
         
     def peritec(self):
-        pass
+        nt = self.ntot-1
+        t = np.zeros((nt+1, nt+1))
+        tt = np.zeros((nt+1))
+        t0 = np.zeros((nt+1, nt+1))
+        tt0 = np.zeros((nt+1))
+        xx = np.zeros((nt+1))
+        
+        j = 0
+        for k in range(1, self.nm+1):
+            if self.lmin[k] == 1:
+                j += 1
+                for i in range(1, nt):
+                    t0[i, j] = self.wmin[k, i]
+                s = 0
+                for i in range(1, self.ncm):
+                    s += self.wmin[k, i] * self.kmat[11, i]
+                t0[11, j] = s
+        j += 1
+        t0[nt, j] = 2
+        nj = j
+        for i in range(1, nt+1):
+            tt0[i] = self.tot[i]
+        
+        for i in range(1, nj+1):
+            for j in range(i, nj+1):
+                t[i, j] = 0
+                for k in range(1, nt+1):
+                    t[i, j] += t0[k, i] * t0[k, j]
+                    t[j, i] = t[i, j]
+        for i in range(1, nj+1):
+            tt[i] = 0
+            for k in range(1, nt+1):
+                tt[i] += t0[k, i] * tt0[k]
+        
+        for k in range(2, nj+1):
+            for i in range(k, nj+1):
+                if np.abs(t[i, k-1]) > self.epsilon:
+                    u = t[k-1, k-1] / t[i, k-1]
+                    for j in range(k, nj+1):
+                        t[i, j] = t[k-1, j] - t[i, j] * u
+                    tt[i] = tt[k-1] - tt[i] * u
+        
+        xx[nj] = tt[nj] / t[nj, nj]
+        for i in range(nj-1, 0, -1):
+            s = 0
+            for j in range(i+1, nj+1):
+                s += t[i, j] * xx[j]
+            xx[i] = (tt[i] - s) / t[i, i]
+        self.nperitec = 0
+        for i in range(1, nj):
+            if xx[i] < 0:
+                self.nperitec = 1
+        return
     
     def evp_invar(self):
         pass
