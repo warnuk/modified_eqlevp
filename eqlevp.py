@@ -199,7 +199,7 @@ class simulation:
         self.poa = 0.
 
         # Initialize blank arrays
-        self.constit_S = np.empty(self.max_constit+1, np.object)
+        self.constit_S = np.empty(self.max_constit+1, object)
         self.psc = np.zeros(15)
         self.tot = np.zeros(self.ntot+1)
         self.tot0 = np.zeros(self.ntot+1)
@@ -208,7 +208,7 @@ class simulation:
         self.molal = np.zeros(self.n+1)
         self.act = np.zeros(self.n+1)
         self.gact = np.zeros(self.n+1)
-        self.aq_S = np.empty(self.n+1, np.object)
+        self.aq_S = np.empty(self.n+1, object)
         self.atom = np.zeros(self.n+1)
         self.kmat = np.zeros((self.n+1, self.n+1))
         self.ica = np.ones(self.n+1)
@@ -272,7 +272,7 @@ class simulation:
         self.wmin = np.zeros((self.nm+1, self.nt+1))
         self.lmin = np.zeros(self.nm+1)
         self.nwmin = np.zeros(self.nm+1)
-        self.mineral_S = np.empty(self.nm+1, np.object)
+        self.mineral_S = np.empty(self.nm+1, object)
         self.mu = np.zeros(self.nt+1)
         self.psol = np.zeros(self.nm+1)
         self.pai = np.zeros(self.nm+1)
@@ -296,14 +296,14 @@ class simulation:
         mineral_list.insert(0, None)
         min_db = np.zeros((self.nm+1, 5))
 
-        self.mineral_S = np.empty(self.nm+1, np.object)
+        self.mineral_S = np.empty(self.nm+1, object)
 
         for k in range(1, self.nm+1):
             line = mineral_list[k]
             self.mineral_S[k] = line[0]
             ncomp = int(line[1])
             c_ion = np.zeros(ncomp+1)
-            nom_ion_S = np.empty(ncomp+1, dtype=np.object)
+            nom_ion_S = np.empty(ncomp+1, dtype=object)
             for i in range(1, ncomp+1):
                 c_ion[i] = float(line[i*2])
                 nom_ion_S[i] = str(line[1+i*2])
@@ -366,7 +366,7 @@ class simulation:
 
         self.nc, self.na, self.nm0 = [int(i) for i in murtf3[0]]
 
-        self.mineral0_S = np.empty(self.nm0+1, np.object)
+        self.mineral0_S = np.empty(self.nm0+1, object)
 
         self.mineral0_S[1:] = [i[0] for i in murtf3[(2+self.nc+self.na):]]
         self.nwmin[np.in1d(self.mineral_S, self.mineral0_S)] = 1
@@ -1839,10 +1839,10 @@ class simulation:
         nbmin = 10
         ninvar = nbmin + 3
         kinv = np.zeros(ninvar+1)
-        minv_S = np.empty(ninvar+1, dtype=np.object)
+        minv_S = np.empty(ninvar+1, dtype=object)
         psminv = np.zeros(ninvar+1)
         winv = np.zeros((ninvar+1, ncm+1))
-        minvar_S = np.empty(ninvar+1, dtype=np.object)
+        minvar_S = np.empty(ninvar+1, dtype=object)
         psminvar = np.zeros(ninvar+1)
         t0 = np.zeros((ninvar+1, ninvar+1))
         t1 = np.zeros((ninvar+1, ninvar+1))
@@ -2046,7 +2046,7 @@ class simulation:
         self.act0 = np.zeros(self.n+1)
         self.gact0 = np.zeros(self.n+1)
         self.gact1 = np.zeros(self.n+1)
-        self.aq_S = np.empty(self.n+1, np.object)
+        self.aq_S = np.empty(self.n+1, object)
         self.atom = np.zeros(self.n+1)
         self.kmat = np.zeros((self.n+1, self.n+1))
 
@@ -2140,7 +2140,7 @@ class simulation:
         self.mu = np.zeros(self.ncm+1)
         self.linvar = np.zeros(self.nm+1)
 
-        self.mineral_S = np.empty(self.nm+1, np.object)
+        self.mineral_S = np.empty(self.nm+1, object)
         self.mum = np.zeros(self.nm+1)
         self.psol = np.zeros(self.nm+1)
         self.psol0 = np.zeros(self.nm+1)
@@ -2173,14 +2173,14 @@ class simulation:
 
         mineral_list = murtf[self.ncm+1:]
         mineral_list.insert(0, None)
-        self.mineral_S = np.empty(self.nm+1, np.object)
+        self.mineral_S = np.empty(self.nm+1, object)
 
         for k in range(1, self.nm+1):
             line = mineral_list[k]
             self.mineral_S[k] = line[0]
             ncomp = int(line[1])
             c_ion = np.zeros(ncomp+1)
-            nom_ion_S = np.empty(ncomp+1, np.object)
+            nom_ion_S = np.empty(ncomp+1, object)
             for i in range(1, ncomp+1):
                 c_ion[i] = float(line[i*2])
                 nom_ion_S[i] = str(line[1+i*2])
@@ -2580,7 +2580,7 @@ class simulation:
                 self.my_S = "_".join(self.mineral_S[(self.lmin == 1) | 
                                                     (self.min != 0)])
                 
-                self.loop_600()
+                self.loop_600(verbose, output)
                 
                     
     
@@ -2765,7 +2765,7 @@ class simulation:
             pass
             
     
-    def loop_2000(self, verbose):
+    def loop_2000(self, verbose, output):
         
         if verbose:
             print("Free energy minimization")
@@ -2907,11 +2907,277 @@ class simulation:
         pass
     
     def reseq(self):
-        pass
+        
+        z = np.zeros((self.n+self.nminer+1, self.n+self.nminer+1))
+        zz = np.zeros(self.n+self.nminer+1)
+        xx = np.zeros(self.n+self.nminer+1)
+        
+        nconv = 1
+        ncm = 15
+        nt = self.n
+        
+        nu = 1
+        while nu != 0:
+            for i in range(1, nt+1):
+                for j in range(1, nt+1):
+                    z[i, j] = 0
+                zz[i] = 0
+            for i in range(1, 13):
+                for j in range(1, self.n+1):
+                    if self.mol[j] != 0:
+                        z[i, j] = self.kmat[i, j]
+            
+            for i in range(13, self.n+1):
+                self.kmat[i, 0] = 0
+                for j in range(1, self.n+1):
+                    if j != 11:
+                        self.kmat[i, 0] += self.kmat[i, j]
+            
+            for i in range(13, self.n+1):
+                p = 1
+                u = 0
+                for j in range(1, self.n+1):
+                    if self.mol[j] != 0 and j != 11:
+                        z[i, j] = self.kmat[i, j] / self.mol[j]
+                        p *= self.gact[j] ** self.kmat[i, j]
+                        u += self.kmat[i, j] * np.log(self.mol[j])
+                    elif j == 11:
+                        z[i, j] = -self.kmat[i, 0] / self.mol[j]
+                        p *= self.aw ** self.kmat[i, j]
+                        u -= self.kmat[i, 0] * np.log(self.mol[j])
+                    elif self.mol[j] == 0:
+                        z[i, j] = 0
+                p *= self.mh2o ** self.kmat[i, 0]
+                zz[i] = np.log(self.psc[i-12]) - np.log(p) - u
+            
+            l = 0
+            for k in range(1, self.nm+1):
+                if self.lmin[k] == 1:
+                    l += 1
+                    self.ica[self.n+l] = 1
+                    self.wmin[k, 0] = 0
+                    p = 1
+                    u = 0
+                    for j in range(1, ncm+1):
+                        if j != 11:
+                            self.wmin[k, 0] += self.wmin[k, j]
+                    for j in range(1, ncm+1):
+                        if j != 11 and self.mol[j] > 0:
+                            z[self.n+l, j] = self.wmin[k, j] / self.mol[j]
+                            p *= self.gact[j] ** self.wmin[k, j]
+                            u += self.wmin[k, j] * np.log(self.mol[j])
+                        elif j == 1:
+                            z[self.n+l, j] = -self.wmin[k, 0] / self.mol[j]
+                            p *= self.aw ** self.wmin[k, j]
+                            u -= self.wmin[k, 0] * np.log(self.mol[j])
+                    p *= self.mh2o ** self.wmin[k, 0]
+                    zz[self.n+l] = np.log(self.psol[k]) - np.log(p) - u
+                    
+                    sh = 0
+                    for j in range(1, ncm+1):
+                        sh += self.wmin[k, j] * self.kmat[11, j]
+                    for i in range(1, 11):
+                        z[i, self.n+l] = self.wmin[k, i]
+                    z[11, self.n+l] = sh
+            
+            nt = self.n + l
+            for i in range(1, 11):
+                u = 0
+                for j in range(1, self.n+1):
+                    u += self.kmat[i, j] * self.mol[j]
+                for k in range(1, self.nm+1):
+                    if self.lmin[k] == 1:
+                        u += self.min[k] * self.wmin[k, i]
+                
+                zz[i] = self.tot[i] - u
+            
+            u = 0
+            for j in range(1, self.n+1):
+                u += self.kmat[11, j] * self.mol[j]
+            for j in range(1, ncm+1):
+                for k in range(1, self.nm+1):
+                    u += self.wmin[k, j] * self.kmat[11, j] * self.min[k]
+            
+            zz[11] = self.tot[11] - u
+            
+            u = 0
+            for j in range(1, self.n+1):
+                u += z[12, j] * self.mol[j]
+            zz[12] = self.tot[12] - u
+            
+            for k in range(1, 11):
+                if self.tot[k] == 0:
+                    self.ica[k] = 0
+                    for j in range(k+1, self.n+1):
+                        if self.kmat[k, j] != 0:
+                            self.ica[j] = 0
+            
+            ni = nt
+            nj = nt
+            for k in range(nt, 0, -1):
+                if self.ica[k] == 0:
+                    for i in range(k, ni):
+                        for j in range(1, nj+1):
+                            z[i, j] = z[i+1, j]
+                        zz[i] = zz[i+1]
+                    ni -= 1
+                    for j in range(k, nj):
+                        for i in range(1, ni+1):
+                            z[i, j] = z[ i, j+1]
+                    nj -= 1
+            
+            for k in range(1, ni+1):
+                for i in range(k, ni+1):
+                    if np.abs(z[i, k-1]) > self.epsilon:
+                        u = z[k-1, k-1] / z[i, k-1]
+                        for j in range(k, ni+1):
+                            z[i, j] = z[k-1, j] - z[i, j] * u
+                        zz[i] = zz[k-1] - zz[i] * u
+            
+            xx[ni] = zz[ni] / z[ni. ni]
+            for i in range(ni-1, 0, -1):
+                s = 0
+                for j in range(i+1, ni+1):
+                    s += z[i, j] * xx[j]
+                xx[i] = (zz[i] - s) / z[i, i]
+            
+            for k in range(1, nt+1):
+                if self.ica[k] == 0:
+                    for i in range(ni, k-1, -1):
+                        xx[i+1] = zz[i]
+                    xx[k] = 0
+                    ni += 1
+            
+            nu = 1
+            while nu != 0:
+                for i in range(1, self.n+1):
+                    if self.ica[i] == 1:
+                        nu = 0
+                        if self.mol[i] + xx[i] / nconv < 0:
+                            nconv += 1
+                            nu = 1
+                            break
+                if nconv >= self.max_conv:
+                    if verbose:
+                        print()
+                        print("The equation system diverges: end of "\
+                              "simulation")
+                    if output:
+                        with open(self.event_file, 'a') as file:
+                            file.write("\n")
+                            file.write("The equation system diverges: "\
+                                       "end of simulation\n")
+                            file.close()
+                        self.compact()
+                    
+                    self.stop_simulation()
+                    return
+            for i in range(1, self.n+1):
+                self.mol[i] += xx[i] / nconv
+            i = self.n
+            for k in range(1, self.nm+1):
+                if self.lmin[k] == 1:
+                    i += 1
+                    self.min[k] += xx[i] / nconv
+            nu = 0
+            for i in range(1, nt+1):
+                if self.ica[i] == 1:
+                    if np.abs(xx[i]) > self.pkeq:
+                        nu = 1
+        return
+
+                
     
     def reseqinv(self):
-        pass
-    
+        
+        nt = self.ntot-1
+        
+        t = np.zeros((nt+1, nt+1))
+        tt = np.zeros((nt+1))
+        t0 = np.zeros((nt+1, nt+1))
+        tt0 = np.zeros((nt+1))
+        xx = np.zeros((nt+1))
+        
+        if self.ninv == 0:
+            hmin = 1000
+            for k in range(1, self.nm+1):
+                for kk in range(1, self.kinvariant+1):
+                    if k == self.kinvar[kk] and self.min[k] > 0:
+                        s = 0
+                        for i in range(1, 16):
+                            s += self.wmin[k, i] * self.kmat[nt, i]
+                        if s > 0:
+                            if s * self.min[k] < hmin:
+                                hmin = s * self.min[k]
+            xinv = hmin / 100
+            if xinv <= 0:
+                self.stop_simulation()
+                return
+        self.ninv = 1
+        j = 0
+        for k in range(1, self.nm+1):
+            if self.lmin[k] == 1:
+                for kk in range(1, self.kinvariant+1):
+                    if k == self.kinvar[kk]:
+                        j += 1
+                        for i in range(1, nt):
+                            t0[i, j] = self.wmin[k, i]
+                        s = 0
+                        for i in range(1, 16):
+                            s += self.wmin[k, i] * self.kmat[nt, i]
+                        t0[nt, j] = s
+        nmin = j
+        
+        for i in range(1, nt):
+            tt[i] = 0
+            for k in range(1, self.nm+1):
+                for kk in range(1, self.kinvariant+1):
+                    if k == self.kinvar[kk]:
+                        tt0[i] += self.min[k] * self.wmin[k, i]
+        tt0[nt] = 0
+        for k in range(1, self.nm+1):
+            for kk in range(1, self.kinvariant+1):
+                if k == self.kinvar[kk]:
+                    for i in range(1, 16):
+                        tt0[nt] += self.min[k] * self.wmin[k, i] * self.kmat[11, i]
+        tt0[nt] -= xinv
+        
+        for i in range(1, nmin+1):
+            for j in range(i, nmin+1):
+                t[i, j] = 0
+                for k in range(1, nt+1):
+                    t[i, j] += t0[k, i] * t0[k, j]
+                    t[j, i] = t[i, j]
+        for i in range(1, nmin+1):
+            tt[i] = 0
+            for k in range(1, nt+1):
+                tt[i] += t0[k, i] * tt0[k]
+        
+        for k in range(2, nmin+1):
+            for i in range(k, nmin+1):
+                if np.abs(t[i, k-1]) > self.epsilon:
+                    u = t[k-1, k-1] / t[i, k-1]
+                    for j in range(k, nmin+1):
+                        t[i, j] = t[k-1, j] - t[i, j] * u
+                    tt[i] = tt[k-1] - tt[i] * u
+        
+        xx[nmin] = tt[nmin] / t[nmin, nmin]
+        for i in range(nmin-1, 0, -1):
+            s = 0
+            for j in range(i+1, nmin+1):
+                s += t[i, j] * xx[j]
+            xx[i] = (tt[i] - s) / t[i, i]
+            if np.abs(xx[i]) < self.epsilon:
+                xx[i] = 0
+        i = 0
+        for k in range(1, self.kinvariant+1):
+            i += 1
+            self.min[self.kinvar[k]] = xx[i]
+            if self.min[self.kinvar[k]] <= 0:
+                self.ninv = 0
+        
+        return
+        
     def peritec(self):
         pass
     
