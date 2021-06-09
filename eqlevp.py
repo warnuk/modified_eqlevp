@@ -3233,8 +3233,163 @@ class simulation:
                 self.nperitec = 1
         return
     
-    def evp_invar(self):
-        pass
+    def evp_invar(self, verbose, output):
+        self.kinvariant = 0
+        self.ncm = 15
+        self.ninvar = self.nbmin + 3
+        
+        kinv = np.zeros((self.ninvar+1))
+        minv_S = np.empty(self.ninvar+1, object)
+        psminv = np.zeros((self.ninvar+1))
+        winv = np.zeros((self.ninvar+1, self.ncm+1))
+        minvar_S = np.empty(self.ninvar+1, object)
+        psminvar = np.zeros((self.ninvar+1))
+        t0 = np.zeros((self.ninvar+1, self.ninvar+1))
+        t1 = np.zeros((self.ninvar+1, self.ninvar+1))
+        t2 = np.zeros((self.ninvar+1, self.ninvar+1))
+        t3 = np.zeros((self.ninvar+1, self.ncm+1))
+        t4 = np.zeros((self.ncm+1, self.ncm+1))
+        tt4 = np.zeros((self.ncm+1))
+        
+        
+        psminv[1:4] = np.log10(self.psc[1:4])
+        
+        winv[1, 13] = 1
+        winv[1, 12] = 1
+        winv[1, 15] = -1
+        winv[2, 13] = 1
+        winv[2, 11] = -1
+        winv[2, 14] = 1
+        winv[3, 13] = 1
+        winv[3, 11] = 1
+        winv[3, 15] = -1
+        
+        n1 = 3
+        for k in range(1, self.nm+1):
+            if self.lmin[k] == 1:
+                n1 += 1
+                kinv[n1] = k
+                minv_S[n1] = self.mineral_S[k]
+                psminv[n1] = np.log10(self.psol[k])
+                for j in range(1, self.ncm+1):
+                    winv[n1, j] = self.wmin[k, j]
+                winv[n1, 11], winv[n1, 15] = winv[n1, 15], winv[n1, 11]
+        
+        for i in range(1, n1+1):
+            for j in range(i, n1+1):
+                t1[i, j] = 0
+                for k in range(1, self.ncm):
+                    t1[i, j] += winv[i, k] * winv[j, k]
+                    t1[j, i] = t1[i, j]
+                    t0[i, j] = t1[i, j]
+                    t0[j, i] = t0[i, j]
+        for k in range(2, n1+1):
+            for i in range(k, n1+1):
+                if np.abs(t1[i, k-1]) > self.epsilon:
+                    u = t1[k-1, k-1] / t1[i, k-1]
+                    for j in range(k, n1+1):
+                        t1[i, j] = t1[k-1, j] - t1[i, j] * u
+                        if np.abs(t1[i, j]) < self.epsilon:
+                            t1[i, j] = 0
+        det = 1
+        for i in range(1, n1+1):
+            if np.abs(t1[i, j]) < self.epsilon:
+                det = 0
+                break
+        if det == 0:
+            n3 = 0
+            n2 = n1 - 1
+            for kk in range(1, n1+1):
+                ii = 0
+                for i in range(1, n1+1):
+                    if i != kk:
+                        ii += 1
+                        jj = 0
+                        for j in range(1, n1+1):
+                            if j != kk:
+                                jj += 1
+                                t2[ii, jj] = t0[i, j]
+                for k in range(1, n2+1):
+                    for i in range(k, n2+1):
+                        if t2[i, k-1] != 0:
+                            u = t2[k-1, k-1] / t2[i, k-1]
+                            for j in range(k, n2+1):
+                                t2[i, j] = t2[k-1, j] - t2[i, j] * u
+                                if np.abs(t2[i, j]) < self.epsilon:
+                                    t2[i, j] = 0
+                det1 = 1
+                for i in range(1, n2+1):
+                    if np.abs(t2[i, j]) < self.epsilon:
+                        det1 = 0
+                        break
+                if det1 == 1:
+                    n3 += 1
+                    self.kinvar[n3] = kinv[kk]
+                    minvar_S[n3] = minv_S[kk]
+                    psminvar[n3] = psminv[kk]
+                    for j in range(1, self.ncm+1):
+                        t3[n3, j] = winv[kk, j]
+            n4 = self.ncm
+            for j in range(self.ncm, 0, -1):
+                u = 0
+                for i in range(1, n3+1):
+                    u += t3[i, j] ** 2
+                if u == 0:
+                    for k in range(j+1, n4+1):
+                        for i in range(1, n3+1):
+                            t3[i, k-1] = t3[i, k]
+                    n4 -= 1
+            
+            for i in range(1, n4+1):
+                for j in range(i, n4+1):
+                    t4[i, j] = 0
+                    for k in range(1, n4+1):
+                        t4[i, j] += t3[k, i] * t3[k, j]
+                        t4[j, i] = t4[i, j]
+            for i in range(1, n4+1):
+                tt4[i] = 0
+                for k in range(1, n3+1):
+                    tt4[i] += t3[k, i] * psminvar[k]
+            
+            
+            for k in range(2, n4+1):
+                for i in range(k, n4+1):
+                    if np.abs(t4[i, k-1]) > self.epsilon:
+                        u = t4[k-1, k-1] / t4[i, k-1]
+                        for j in range(k, n4+1):
+                            t4[i, j] = t4[k-1, j] - t4[i, j] * u
+                            if np.abs(t4[i, j]) < self.epsilon:
+                                t4[i, j] = 0
+                        tt4[i] = tt4[k-1] - tt4[i] * u
+            
+            
+            self.ah2o = 10 ** (tt4[n4] / t4[n4, n4])
+            self.kinvariant = n3
+            for i in range(self.kinvariant, 0, -1):
+                if self.kinvar[i] == 0:
+                    for k in range(1, self.kinvariant):
+                        self.kinvar[k] = self.kinvar[k+1]
+                    self.kinvariant -= 1
+            if verbose:
+                print("invariant system constrained by: ")
+                for k in range(1, self.kinvariant+1):
+                    print("    {}".format(self.mineral_S[self.kinvar[k]]))
+                print()
+                print("invariant aH2O = {}".format(self.ah2o))
+                print("simulation aH2O = {}".format(self.aw))
+            if output:
+                with open(self.event_file, 'a') as file:
+                    file.write("invariant system constrained by: \n")
+                    for k in range(1, self.kinvariant+1):
+                        file.write("    {}".format(self.mineral_S[self.kinvar[k]]))
+                        file.write("\n")
+                    file.write("\n")
+                    file.write("invariant aH2O = {}\n".format(self.ah2o))
+                    file.write("simulation aH2O = {}\n".format(self.aw))
+                    file.close()
+        return
+        
+        
     
     def evp_density(self):
         ncdens, nadens = 5, 5
