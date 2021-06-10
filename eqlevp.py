@@ -2487,7 +2487,6 @@ class simulation:
                     
                     return
                 
-            # LINE 568
             for k in range(1, self.nm+1):
                 if self.psol[k] == 1e+50 and self.linvar[k] == 0:
                     self.psol[k] = self.psol0[k]
@@ -2581,6 +2580,8 @@ class simulation:
                                                     (self.min != 0)])
                 
                 self.loop_600(verbose, output)
+                
+                return
                 
                     
     
@@ -2762,7 +2763,46 @@ class simulation:
             
         # LINE 842
         if output:
-            pass
+            lines = []
+            for k in range(1, self.nm+1):
+                if self.system == "c":
+                    if self.lmin[k] == 1 and self.lmin0[k] == 0:
+                        lines.append("start of precipitation of {} at fc = {}"\
+                                     " ".format(self.mineral_S[k]), self.fc)
+                    elif self.lmin[k] == 1 and self.lmin1[k] == 0:
+                        if self.min[k] < self.min0[k]:
+                            self.lmin1[k] = 1
+                            lines.append("end of precipitation and start of "\
+                                         "dissolution of {} at fc = {}"\
+                                         " ".format(self.mineral_S[k]), self.fc)
+                    
+                    elif self.lmin[k] == 1 and self.lmin1[k] == 1:
+                        if self.min[k] > self.min0[k]:
+                            self.lmin1[k] = 0
+                            lines.append("end of dissolution and of "\
+                                         "precipitation of {} at fc = {}"\
+                                         " ".format(self.mineral_S[k]), self.fc)
+                    
+                    elif (self.lmin[k] == 0 and 
+                          self.lmin1[k] == 1 and 
+                          self.lmin0[k] == 1):
+                        
+                        self.lmin[k] = 0
+                        lines.append("end of dissolution and of "\
+                                     "saturation of {} at fc = {}"\
+                                     " ".format(self.mineral_S[k]), self.fc)
+                    
+                    elif (self.lmin[k] == 0 and
+                          self.lmin1[k] == 0 and 
+                          self.lmin0[k] == 1):
+                        
+                        self.lmin1[k] = 0
+                        lines.append("end of saturation of {} at fc = {}"\
+                                     " ".format(self.mineral_S[k], self.fc))
+                elif self.system == "o":
+                    pass
+
+
             
     
     def loop_2000(self, verbose, output):
