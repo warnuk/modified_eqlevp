@@ -44,6 +44,7 @@ class simulation:
 
         # Set additional object attributes to the
         # parameters used in this simulation
+        self.system = system
         self.units = units
         self.dil = dilute
         self.pco2 = pco2
@@ -154,7 +155,7 @@ class simulation:
                 delattr(self, i)
                 
             # Run EVP
-            self.run_evp(verbose=verbose)
+            self.run_evp(verbose=verbose, output=output)
 
     def initialize_eql(self, system, verbose, output):
         
@@ -1997,7 +1998,7 @@ class simulation:
         return(g1)
 
 
-    def run_evp(self, verbose):
+    def run_evp(self, verbose, output):
 
         if verbose:
             print("\nThis is EVP..............\n")
@@ -2009,7 +2010,7 @@ class simulation:
         
         # Do the 500 loop
         
-        pass
+        self.loop_500(verbose, output)
 
 
     def initialize_evp(self, verbose):
@@ -2023,6 +2024,8 @@ class simulation:
         self.ndepact = 0
         self.ncpt = 0
         self.mwev = 0
+        self.npasi = 0
+        self.npasf = 0
         self.fc = 1
         self.q0_S = ""
         self.n = 25
@@ -2061,6 +2064,9 @@ class simulation:
 
         # transfer output from EQL into input for EVP
         self.totinit[1:11] = self.tot[1:11]
+        self.nbmin = np.count_nonzero(self.totinit)
+        self.ica = np.zeros(self.n+self.nbmin+1)
+        self.kinvar = np.zeros(self.nbmin+4)
         self.mol[0] = self.molal[15]
         self.mol[1:11] = self.molal[1:11]
         self.mol[11] = self.mh2o
@@ -2295,7 +2301,7 @@ class simulation:
                             self.psol[k] *= 0.95
                             
                             if verbose:
-                                print(self.mineral_S[k], self.psol[k], self.pso0[k])
+                                print(self.mineral_S[k], self.psol[k], self.psol0[k])
                         elif self.psol[k] * 0.95 <= self.psol0[k]:
                             self.psol[k] = self.psol0[k]
             
@@ -2425,7 +2431,9 @@ class simulation:
                 self.mol1 = self.mol
                 
                 if self.kinvariant == 0:
-                    self.reseq(verbose, output)
+                    res = self.reseq(verbose, output)
+                    if res == "stop":
+                        return
                     
                 elif self.kinvariant > 0:
                     self.reseqinv()
@@ -2646,7 +2654,7 @@ class simulation:
                             file.write(db1.to_string(index=False))
                         file.write("\n")
                         file.close()
-            if self.my_S == '': 
+            if self.my_S == "": 
                 if verbose:
                     print("No_minerals")
                     
@@ -2768,20 +2776,20 @@ class simulation:
                 if self.system == "c":
                     if self.lmin[k] == 1 and self.lmin0[k] == 0:
                         lines.append("start of precipitation of {} at fc = {}"\
-                                     " ".format(self.mineral_S[k]), self.fc)
+                                     "".format(self.mineral_S[k]), self.fc)
                     elif self.lmin[k] == 1 and self.lmin1[k] == 0:
                         if self.min[k] < self.min0[k]:
                             self.lmin1[k] = 1
                             lines.append("end of precipitation and start of "\
                                          "dissolution of {} at fc = {}"\
-                                         " ".format(self.mineral_S[k]), self.fc)
+                                         "".format(self.mineral_S[k]), self.fc)
                     
                     elif self.lmin[k] == 1 and self.lmin1[k] == 1:
                         if self.min[k] > self.min0[k]:
                             self.lmin1[k] = 0
                             lines.append("end of dissolution and of "\
                                          "precipitation of {} at fc = {}"\
-                                         " ".format(self.mineral_S[k]), self.fc)
+                                         "".format(self.mineral_S[k]), self.fc)
                     
                     elif (self.lmin[k] == 0 and 
                           self.lmin1[k] == 1 and 
@@ -2790,7 +2798,7 @@ class simulation:
                         self.lmin[k] = 0
                         lines.append("end of dissolution and of "\
                                      "saturation of {} at fc = {}"\
-                                     " ".format(self.mineral_S[k]), self.fc)
+                                     "".format(self.mineral_S[k]), self.fc)
                     
                     elif (self.lmin[k] == 0 and
                           self.lmin1[k] == 0 and 
@@ -2800,7 +2808,185 @@ class simulation:
                         lines.append("end of saturation of {} at fc = {}"\
                                      " ".format(self.mineral_S[k], self.fc))
                 elif self.system == "o":
-                    pass
+                    if self.lmin[k] == 1 and self.lmin0[k] == 0:
+                        lines.append("start of precipitation of {} at "\
+                                     "fc = {}".format(self.mineral_S[k], 
+                                                      self.fc))
+                    elif self.lmin[k] == 0 and self.lmin0[k] == 1:
+                        lines.append("end of precipitation of {} at "\
+                                     "fc = {}".format(self.mineral_S[k],
+                                                      self.fc))
+            with open(self.event_file, 'a') as file:
+                for line in lines:
+                    file.write(line)
+                    file.write("\n")
+                file.write("\n")
+                file.close()
+            
+            if (self.ncpt == 1 or 
+                self.my_S != self.my0_S or 
+                self.npasf == self.output_step):
+                
+                if self.units == "molal":
+                    self.ee = 1000
+                if self.units == "molar":
+                    self.ee = 1000000 * self.dens / (1000 + self.std)
+                    
+                line = []
+                if self.my_S == "":
+                    line.append("No_minerals")
+                else:
+                    line.append(self.my_S)
+                line.append(self.fc)
+                line.append(self.mwev)
+                line.append(self.dens)
+                line.append(-np.log10(self.act[13]))
+                line.append(self.alc * self.ee)
+                for i in range(1, 11):
+                    if self.tot[i] > 0:
+                        s = 0
+                        for j in range(1, self.n+1):
+                            s += self.molal[j] * self.kmat[i, j]
+                        line.append(s * self.ee)
+                line.append(self.std * self.ee)
+                
+                
+                with open(self.chem_file, 'a') as file:
+                    file.write(",".join(line))
+                    file.write("\n")
+                    file.close()
+                
+                line = []
+                line.append(self.fc)
+                if self.system == "c":
+                    for i in range(1, self.nm+1):
+                        if self.min[i] >= 0:
+                            line.append(self.min[i])
+                        elif self.min[i] < 0:
+                            line.append(0)
+                elif self.system == "o":
+                    for i in range(1, self.nm+1):
+                        if self.minp[i] >= 0:
+                            line.append(self.minp[i])
+                        elif self.minp[i] < 0:
+                            line.append(0)
+                
+                with open(self.min_file, 'a') as file:
+                    file.write(",".join(line))
+                    file.write("\n")
+                    file.close()
+                
+                
+        if self.stdmax > 0 and self.std * self.ee >= self.stdmax:
+            if output:
+                self.compact()
+            self.stop_simulation()
+            return
+        
+        if (self.mwev > 0 and 
+            self.kinvariant == 0 and 
+            (np.abs(self.act[11] - self.act0[11]) / 
+             (self.act[11] + self.act0[11])) < .0000000001):
+            
+            if self.system == "c":
+                nu = 0
+                for k in range(1, self.nm+1):
+                    if self.min[k] > 0 and self.min[k] < self.min0[k]:
+                        nu = 1
+                if nu == 0:
+                    if self.nminer == self.nbmin:
+                        self.q_S = "invariant system / eutectic point / end"
+                    if self.nminer < self.nbmin:
+                        self.q_S = "invariant system / pseudo-eutectic point / end"
+                elif nu == 1:
+                    if self.nperitec == 0:
+                        self.peritec()
+                    if self.nperitec == 0:
+                        if self.nminer == self.nbmin:
+                            self.q_S = "invariant system / peritectic point / end"
+                        if self.nminer < self.nbmin:
+                            self.q_S = "invariant system / pseudo-peritectic point / end"
+                    elif self.nperitec == 1:
+                        if self.nminer == self.nbmin:
+                            self.q_S = "invariant system / peritectic / passing over"
+                        if self.nminer < self.nbmin:
+                            self.q_S = "invariant system / pseudo-peritectic / passing over"
+            if self.system == "o":
+                if self.nminer == self.nbmin:
+                    self.q_S = "invariant system / eutectic / end"
+                if self.nminer < self.nbmin:
+                    self.q_S = "invariant system / pseudo-eutectic / end"
+            
+            if "pseudo" in self.q_S:
+                self.q1_S = ("maximum number of minerals allowed by the "\
+                    "phase rule = {}".format(self.nbmin))
+                self.q2_S = ("number of minerals in equilibrium with the "\
+                    "invariant system = {}".format(self.nminer))
+                self.q_S = "\n".join([self.q_S, self.q1_S, self.q2_S])
+            
+            self.q0_S = self.q_S
+            
+            if verbose:
+                print(self.q_S)
+            
+            if output:
+                with open(self.log_file, 'a') as file:
+                    file.write(self.q_S)
+                    file.write("\n")
+                    file.close()
+                    
+            if "end" in self.q_S:
+                if output:
+                    self.compact()
+                self.stop_simulation()
+                return
+            
+            # Line 1004
+        elif (self.kinvariant == 0 and
+              (np.abs(self.act[11] - self.act0[11]) / 
+               (self.act[11] + self.act0[11])) > .0000000001):
+            
+            self.nperitec = 0
+            self.q_S = ""
+            self.q0_S = ""
+            self.q1_S = ""
+            self.q2_S = ""
+        
+        if self.npasi == self.output_step:
+            self.npasi = 0
+        if self.npasf == self.output_step:
+            self.npasf = 0
+            
+        if self.my_S != self.my0_S:
+            self.my0_S = self.my_S
+            
+        self.mol0 = self.mol
+        self.molal0 = self.molal
+        self.gact0 = self.gact
+        self.act0 = self.act
+        
+        self.tot0[1:] = self.tot[1:]
+        
+        self.lmin0[1:] = self.lmin[1:]
+        self.pai0[1:] = self.pai[1:]
+        self.min0[1:] = self.min[1:]
+        self.minp0[1:] = self.minp[1:]
+        
+        self.fi0 = self.fi
+        self.mwev0 = self.mwev
+        self.nminer0 = self.nminer
+        
+        if self.kinvariant == 0 and self.initdeseq == 0:
+            if self.inc_S == "auto":
+                self.xi = (51 - 8 * np.log10(self.std * 1000)) / 700
+                self.xi0 = self.xi
+            elif self.inc_S == "manu":
+                self.xi = self.xi0
+            self.mwev += self.mol[11] * self.xi
+            self.tot[11] -= 2 * self.mol[11] * self.xi
+            
+        self.loop_2000(verbose, output)
+        return
 
 
             
@@ -3074,7 +3260,7 @@ class simulation:
                             z[i, j] = z[k-1, j] - z[i, j] * u
                         zz[i] = zz[k-1] - zz[i] * u
             
-            xx[ni] = zz[ni] / z[ni. ni]
+            xx[ni] = zz[ni] / z[ni, ni]
             for i in range(ni-1, 0, -1):
                 s = 0
                 for j in range(i+1, ni+1):
@@ -3487,8 +3673,8 @@ if __name__ == "__main__":
     test = simulation(label='test', temp=30, dens=1, ph=6.55, na=84.5, k=3.3, li=0,
                       ca=2.7, mg=1.3, cl=39.5, so4=0, alk=56.2, no3=0, si=0, b=0)
     
-    test.run_eql(-3, "c", add_minerals=['dolomite'],
-                 rem_minerals=['calcite', 'nesquehonite',
+    test.run_eql(-3, "c", add_minerals=['calcite'],
+                 rem_minerals=['dolomite', 'nesquehonite',
                                'magnesite', 'hydromagnesite'],
                  verbose=True, call_evp=True)
      
