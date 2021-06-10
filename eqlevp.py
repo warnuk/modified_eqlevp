@@ -48,6 +48,7 @@ class simulation:
         self.units = units
         self.dil = dilute
         self.pco2 = pco2
+        self.stdmax = max_salinity
 
         if verbose:
             print("\nThis is EQL..............\n")
@@ -2008,8 +2009,6 @@ class simulation:
         
         self.initialize_evp(verbose=verbose)
         
-        # Do the 500 loop
-        
         self.loop_500(verbose, output)
 
 
@@ -2026,13 +2025,17 @@ class simulation:
         self.mwev = 0
         self.npasi = 0
         self.npasf = 0
+        self.initdeseq = 0
         self.fc = 1
         self.q0_S = ""
+        self.my_S = ""
+        self.my0_S = ""
         self.n = 25
         self.ntot = 12
         self.ncomplex = 14
         self.mh2o = 55.51
-
+        self.ksupprim = 0
+        
         # Initialize blank arrays
         self.totinit = np.zeros(self.ntot+1)
         self.tot0 = np.zeros(self.ntot+1)
@@ -2287,309 +2290,307 @@ class simulation:
                 self.psol[k] = self.pai[k]
                 
     def loop_500(self, verbose, output):
-        while True:
-            self.ncmpt = 0
-            ix, iy = 1, 2
-            self.initdeseq = 0
-            if self.mwev == 0:
+        self.ncmpt = 0
+        ix, iy = 1, 2
+        self.initdeseq = 0
+        if self.mwev == 0:
+            for k in range(1, self.nm+1):
+                if self.psol[k] > self.psol0[k]:
+                    self.initdeseq = 1
+            if self.initdeseq == 1:
                 for k in range(1, self.nm+1):
-                    if self.psol[k] > self.psol0[k]:
-                        self.initdeseq = 1
-                if self.initdeseq == 1:
-                    for k in range(1, self.nm+1):
-                        if self.psol[k] * 0.95 > self.psol0[k]:
-                            self.psol[k] *= 0.95
-                            
-                            if verbose:
-                                print(self.mineral_S[k], self.psol[k], self.psol0[k])
-                        elif self.psol[k] * 0.95 <= self.psol0[k]:
-                            self.psol[k] = self.psol0[k]
-            
-            self.nw = 1
-            while self.nw != 0:
-                
-                self.ncmpt += 1
-                self.m0_S = "_".join(self.mineral_S[self.lmin == 1])
-                
-                self.gact1 = self.gact
-                self.evp_actp()
-                
-                if self.kinvariant == 0:
-                    self.gact = ((self.gact + self.gact1 * ix) / iy)
-                
-                self.molal = self.mol * self.mh2o / self.mol[11]
-                self.act = self.molal * self.gact
-                
-                for k in range(1, self.nm+1):
-                    self.pai[k] = 1
-                    for i in range(1, self.ncm+1):
-                        self.pai[k] *= self.act[i] ** self.wmin[k, i]
-                    
-                    if self.pai[k] >= self.psol[k]:
-                        if self.min[k] >= 0:
-                            self.lmin[k] = 1
-                        elif self.min[k] < 0:
-                            self.lmin[k] = 0
-                            self.min[k] = 0
-                    elif self.pai[k] < self.psol[k]:
-                        if self.min[k] <= 0:
-                            self.lmin[k] = 0
-                            self.min[k] = 0
-                        elif self.min[k] > 0:
-                            self.lmin[k] = 1
-                
-                for k in range(1, self.nm+1):
-                    if self.psol[k] == 1e50:
-                        if self.pai[k] < self.psol0[k] * 0.9:
-                            self.linvar[k] = 0
-                        elif self.pai[k] >= self.psol0[k]:
-                            self.linvar = 1
-                
-                self.nminer = np.count_nonzero(self.lmin == 1)
-                self.mineraux_S = "_".join(self.mineral_S[self.lmin == 1])
-                
-                if self.ncpt == 1 or self.ncpt % self.output_step == 0:
-                    if self.nminer == 0:
-                        print(self.ncmpt, "No_minerals")
-                    else:
-                        print(self.ncmpt, self.mineraux_S)
-                
-                if (self.mwev > 0 and self.fc != 1 and 
-                    self.nminer - self.nminer0 >= 2):
-                    
-                    self.xi /= 2
-                    
-                    if self.xi < self.epsilon:
+                    if self.psol[k] * 0.95 > self.psol0[k]:
+                        self.psol[k] *= 0.95
+                        
                         if verbose:
-                            print()
-                            print("Program unstable")
-                            print("Restart the initialization "\
-                                  "program (EQL...)")
-                            print("and lower the limits of convergence")
-                        
-                        if output:
-                            with open(self.event_file, 'a') as file:
-                                file.write("Program unstable\n")
-                                file.write("Restart the initialization "\
-                                           "program (EQL...)\n")
-                                file.write("and lower the limits "\
-                                           "of convergence\n")
-                                file.close()
-                    
-                            self.compact()
-                    
-                        self.stop_simulation()
-                        
-                        return
-                        
-                    if verbose:
-                        print("reduction at increment {}".format(self.xi))
-                    
-                    self.mol = self.mol0
-                    self.tot = self.tot0
-                    self.lmin = self.lmin0
-                    self.min = self.min0
-                    self.minp = self.minp0
-                    
-                    self.mwev = self.mwev0
-                    self.nminer = self.nminer0
-                    self.mwev += self.mol[11] * self.xi
-                    self.tot[11] -= 2 * self.mol[11] * self.xi
-                    
-                    # start the loop over, exit the parent call when done
-                    self.loop_500(verbose, output)
-                    return
-                
-                if self.nminer > 1 and self.mineraux_S != self.m0_S:
-                    ix, iy = 2, 3
-                    self.invar()
-                    
-                    if self.kinvariant > 0:
-                        if self.system == "o":
-                            for i in range(1, self.kinvariant+1):
-                                if (self.minp[self.kinvar[i]] == 0 and
-                                    self.min[self.kinvar[i]] == 0):
-                                        self.kneug = self.kinvar[i]
-                            
-                            self.loop_2000()
-                            return
-                    
-                        elif self.system == "c":
-                            self.mol = self.mol0
-                            self.molal = self.molal0
-                            self.gact = self.gact0
-                            self.act = self.act0
-                        
-                            self.tot = self.tot0
-                            self.pai = self.pai0
-                            self.min = self.min0
-                            
-                            self.mwev = self.mwev0
-                            self.nminer = self.nminer0
-                            self.fi = self.fi0
-                            
-                self.mol1 = self.mol
-                
-                if self.kinvariant == 0:
-                    res = self.reseq(verbose, output)
-                    if res == "stop":
-                        return
-                    
-                elif self.kinvariant > 0:
-                    self.reseqinv()
-                    self.mwev += self.xinv/2
-                    self.tot[11] -= self.xinv
-                
-                self.mol[0] = (self.mol[15] * self.gact[15] * self.mol[13] * 
-                               self.gact[13] / self.mol[11] / self.gact[11] / 
-                               self.psc3 / self.gact[0])
+                            print(self.mineral_S[k], self.psol[k], self.psol0[k])
+                    elif self.psol[k] * 0.95 <= self.psol0[k]:
+                        self.psol[k] = self.psol0[k]
+        
+        self.nw = 1
+        while self.nw != 0:
             
-                self.nw = 0
+            self.ncmpt += 1
+            self.m0_S = "_".join(self.mineral_S[self.lmin == 1])
+            
+            self.gact1 = self.gact
+            self.evp_actp()
+            
+            if self.kinvariant == 0:
+                self.gact = ((self.gact + self.gact1 * ix) / iy)
+            
+            self.molal = self.mol * self.mh2o / self.mol[11]
+            self.act = self.molal * self.gact
+            
+            for k in range(1, self.nm+1):
+                self.pai[k] = 1
+                for i in range(1, self.ncm+1):
+                    self.pai[k] *= self.act[i] ** self.wmin[k, i]
                 
-                for i in range(1, self.n+1):
-                    if self.mol[i] > 0:
-                        if (200 * np.abs(self.mol[i] - self.mol1[i]) / 
-                            (self.mol[i] + self.mol1[i]) > self.pkmol):
-                            
-                            self.nw = 1
-                            
-                self.ki = self.kinvariant
+                if self.pai[k] >= self.psol[k]:
+                    if self.min[k] >= 0:
+                        self.lmin[k] = 1
+                    elif self.min[k] < 0:
+                        self.lmin[k] = 0
+                        self.min[k] = 0
+                elif self.pai[k] < self.psol[k]:
+                    if self.min[k] <= 0:
+                        self.lmin[k] = 0
+                        self.min[k] = 0
+                    elif self.min[k] > 0:
+                        self.lmin[k] = 1
+            
+            for k in range(1, self.nm+1):
+                if self.psol[k] == 1e+50:
+                    if self.pai[k] < self.psol0[k] * 0.9:
+                        self.linvar[k] = 0
+                    elif self.pai[k] >= self.psol0[k]:
+                        self.linvar = 1
+            
+            self.nminer = np.count_nonzero(self.lmin == 1)
+            self.mineraux_S = "_".join(self.mineral_S[self.lmin == 1])
+            
+            if self.ncpt == 1 or self.ncpt % self.output_step == 0:
+                if self.nminer == 0:
+                    print(self.ncmpt, "No_minerals")
+                else:
+                    print(self.ncmpt, self.mineraux_S)
+            
+            if (self.mwev > 0 and self.fc != 1 and 
+                self.nminer - self.nminer0 >= 2):
                 
-                if self.kinvariant > 0:
-                    for k in range(1, self.kinvariant+1):
-                        if self.min[self.kinvar[k]] <= 0:
-                            self.lmin[self.kinvar[k]] = 0
-                            self.min[self.kinvar[k]] = 0
-                            self.psol[self.kinvar[k]] = 1e+50
-                            self.mwev += self.mol[11] * self.xi
-                            self.tot[11] -= 2 * self.mol[11] * self.xi
-                            self.ki, self.nw = 0, 1
-                            
-                self.kinvariant = self.ki
+                self.increment /= 2
                 
-                if self.nw == 1:
-                    self.mol = (self.mol + self.mol1) / 2
-                
-                if self.ncmpt == 500:
+                if self.increment < self.epsilon:
                     if verbose:
                         print()
                         print("Program unstable")
-                        print("Restart the initialization program (EQL...)")
-                        print("and lower the limits of convergence.")
-                        print("Set the increment in manual mode at a lower "\
-                              "value than .5")
+                        print("Restart the initialization "\
+                              "program (EQL...)")
+                        print("and lower the limits of convergence")
+                    
                     if output:
                         with open(self.event_file, 'a') as file:
                             file.write("Program unstable\n")
                             file.write("Restart the initialization "\
                                        "program (EQL...)\n")
-                            file.write("and lower the limits of "\
-                                       "convergence.\n")
-                            file.write("Set the increment in manual mode "\
-                                       "at a lower value than .5\n")
+                            file.write("and lower the limits "\
+                                       "of convergence\n")
                             file.close()
-                    
+                
                         self.compact()
-                    
+                
                     self.stop_simulation()
                     
                     return
+                    
+                if verbose:
+                    print("reduction at increment {}".format(self.increment))
                 
-            for k in range(1, self.nm+1):
-                if self.psol[k] == 1e+50 and self.linvar[k] == 0:
-                    self.psol[k] = self.psol0[k]
-                    if verbose:
-                        print("resetting: {}".format(self.mineral_S[k]))
-                self.linvar[k] = 0
-            
-            self.npasi += 1
-            self.npasf += 1
-            self.ncpt += 1
-            
-            if self.system == "o":
-                for k in range(1, self.nm+1):
-                    self.minp[k] += self.min[k]
+                self.mol = self.mol0
+                self.tot = self.tot0
+                self.lmin = self.lmin0
+                self.min = self.min0
+                self.minp = self.minp0
                 
-                for i in range(1, 11):
-                    for k in range(1, self.nm+1):
-                        self.tot[i] -= self.wmin[k, i] * self.min[k]
+                self.mwev = self.mwev0
+                self.nminer = self.nminer0
+                self.mwev += self.mol[11] * self.increment
+                self.tot[11] -= 2 * self.mol[11] * self.increment
                 
-                for j in range(1, self.ncm+1):
-                    for k in range(1, self.nm+1):
-                        self.tot[11] -= (self.wmin[k, j] * 
-                                         self.kmat[11, j] * 
-                                         self.min[k])
-                
-                for i in range(1, self.ntot):
-                    self.totest[i] = 0
-                    for j in range(1, self.n+1):
-                        self.totest[i] += self.kmat[i, j] * self.mol[j]
-                
-                self.totinit[12] = 0
-                self.totest[12] = 0
-                for j in range(1, self.n+1):
-                    if self.kmat[12, j] > 0:
-                        self.totest[12] += self.kmat[12, j] * self.mol[j]
-                    elif self.kmat[12, j] < 0:
-                        self.totinit[12] += self.kmat[12, j] * self.mol[j]
-                self.totinit[12] = -self.totinit[12]
-                
-                for i in range(1, 11):
-                    for k in range(1, self.nm+1):
-                        if self.system == "c":
-                            self.totest[i] += self.min[k] * self.wmin[k, i]
-                        if self.system == "o":
-                            self.totest[i] += self.minp[k] * self.wmin[k, i]
-                
-                for j in range(1, self.ncm+1):
-                    for k in range(1, self.nm+1):
-                        if self.system == "c":
-                            self.totest[11] += (self.wmin[k, j] * 
-                                                self.kmat[11, j] * 
-                                                self.min[k])
-                        if self.system == "o":
-                            self.totest[11] += (self.wmin[k, j] * 
-                                                self.kmat[11, j] * 
-                                                self.minp[k])
-                            
-                self.totest += self.mwev * 2
-                
-                self.evp_density()
-                
-                self.fc = self.mh2o / self.mol[11]
-                self.alc = (self.molal[12] - self.molal[13] + 
-                            self.molal[14] * 2 + self.molal[15] + 
-                            (self.molal[16] + self.molal[17]) * 2)
-                self.alc += (self.molal[18] + self.molal[19] + 
-                             self.molal[20] + self.molal[21] * 2)
-                self.alc += (self.molal[22] + self.molal[23] + 
-                             self.molal[24] - self.molal[25])
-                
-                self.std = (np.sum(self.molal[1:] * self.atom[1:]) - 
-                            self.molal[11] * self.atom[11])
-                
-                self.ee = 1000000e0 * self.dens / (1000e0 + self.std)
-                
-                self.hco3 = 0
-                self.co3 = 0
-                for k in range(1, self.nm+1):
-                    if self.system == "c":
-                        self.hco3 += self.wmin[k, 15] * self.min[k]
-                        self.co3 += self.wmin[k, 14] * self.min[k]
-                    elif self.system == "o":
-                        self.hco3 += self.wmin[k, 15] * self.minp[k]
-                        self.co3 += self.wmin[k, 14] * self.minp[k]
-                
-                self.ctot = (self.mol[0] + self.mol[14] + self.mol[15] + 
-                             self.mol[16] + self.mol[17] + 
-                             self.hco3 + self.co3)
-                
-                self.my_S = "_".join(self.mineral_S[(self.lmin == 1) | 
-                                                    (self.min != 0)])
-                
-                self.loop_600(verbose, output)
-                
+                # start the loop over, exit the parent call when done
+                self.loop_500(verbose, output)
                 return
+            
+            if self.nminer > 1 and self.mineraux_S != self.m0_S:
+                ix, iy = 2, 3
+                
+                self.evp_invar(verbose, output)
+                
+                if self.kinvariant > 0:
+                    if self.system == "o":
+                        for i in range(1, self.kinvariant+1):
+                            if (self.minp[self.kinvar[i]] == 0 and
+                                self.min[self.kinvar[i]] == 0):
+                                    
+                                self.kneuf = self.kinvar[i]
+                        
+                        self.loop_2000()
+                        return(999)
+                
+                    elif self.system == "c":
+                        self.mol = self.mol0
+                        self.molal = self.molal0
+                        self.gact = self.gact0
+                        self.act = self.act0
+                    
+                        self.tot[1:] = self.tot0[1:]
+                        self.pai[1:] = self.pai0[1:]
+                        self.min[1:] = self.min0[1:]
+                        
+                        self.mwev = self.mwev0
+                        self.nminer = self.nminer0
+                        self.fi = self.fi0
+                        
+            self.mol1 = self.mol
+            
+            if self.kinvariant == 0:
+                if self.reseq(verbose, output) == 999:
+                    return
+                
+            elif self.kinvariant > 0:
+                self.reseqinv()
+                self.mwev += self.xinv/2
+                self.tot[11] -= self.xinv
+            
+            self.mol[0] = (self.mol[15] * self.gact[15] * self.mol[13] * 
+                           self.gact[13] / self.mol[11] / self.gact[11] / 
+                           self.psc3 / self.gact[0])
+        
+            self.nw = 0
+            
+            for i in range(1, self.n+1):
+                if self.mol[i] > 0:
+                    if (200 * np.abs(self.mol[i] - self.mol1[i]) / 
+                        (self.mol[i] + self.mol1[i]) > self.pkmol):
+                        
+                        self.nw = 1
+                        
+            self.ki = self.kinvariant
+            
+            if self.kinvariant > 0:
+                for k in range(1, self.kinvariant+1):
+                    if self.min[self.kinvar[k]] <= 0:
+                        self.lmin[self.kinvar[k]] = 0
+                        self.min[self.kinvar[k]] = 0
+                        self.psol[self.kinvar[k]] = 1e+50
+                        self.mwev += self.mol[11] * self.increment
+                        self.tot[11] -= 2 * self.mol[11] * self.increment
+                        self.ki, self.nw = 0, 1
+                        
+            self.kinvariant = self.ki
+            
+            if self.nw == 1:
+                self.mol = (self.mol + self.mol1) / 2
+            
+            if self.ncmpt == 500:
+                if verbose:
+                    print()
+                    print("Program unstable")
+                    print("Restart the initialization program (EQL...)")
+                    print("and lower the limits of convergence.")
+                    print("Set the increment in manual mode at a lower "\
+                          "value than .5")
+                if output:
+                    with open(self.event_file, 'a') as file:
+                        file.write("Program unstable\n")
+                        file.write("Restart the initialization "\
+                                   "program (EQL...)\n")
+                        file.write("and lower the limits of "\
+                                   "convergence.\n")
+                        file.write("Set the increment in manual mode "\
+                                   "at a lower value than .5\n")
+                        file.close()
+                
+                    self.compact()
+                
+                self.stop_simulation()
+                return
+            
+        for k in range(1, self.nm+1):
+            if self.psol[k] == 1e+50 and self.linvar[k] == 0:
+                self.psol[k] = self.psol0[k]
+                if verbose:
+                    print("resetting: {}".format(self.mineral_S[k]))
+            self.linvar[k] = 0
+        
+        self.npasi += 1
+        self.npasf += 1
+        self.ncpt += 1
+        
+        if self.system == "o":
+            for k in range(1, self.nm+1):
+                self.minp[k] += self.min[k]
+            
+            for i in range(1, 11):
+                for k in range(1, self.nm+1):
+                    self.tot[i] -= self.wmin[k, i] * self.min[k]
+            
+            for j in range(1, self.ncm+1):
+                for k in range(1, self.nm+1):
+                    self.tot[11] -= (self.wmin[k, j] * 
+                                     self.kmat[11, j] * 
+                                     self.min[k])
+            
+        for i in range(1, self.ntot):
+            self.totest[i] = 0
+            for j in range(1, self.n+1):
+                self.totest[i] += self.kmat[i, j] * self.mol[j]
+        
+        self.totinit[12] = 0
+        self.totest[12] = 0
+        for j in range(1, self.n+1):
+            if self.kmat[12, j] > 0:
+                self.totest[12] += self.kmat[12, j] * self.mol[j]
+            elif self.kmat[12, j] < 0:
+                self.totinit[12] += self.kmat[12, j] * self.mol[j]
+        self.totinit[12] = -self.totinit[12]
+        
+        for i in range(1, 11):
+            for k in range(1, self.nm+1):
+                if self.system == "c":
+                    self.totest[i] += self.min[k] * self.wmin[k, i]
+                if self.system == "o":
+                    self.totest[i] += self.minp[k] * self.wmin[k, i]
+        
+        for j in range(1, self.ncm+1):
+            for k in range(1, self.nm+1):
+                if self.system == "c":
+                    self.totest[11] += (self.wmin[k, j] * 
+                                        self.kmat[11, j] * 
+                                        self.min[k])
+                if self.system == "o":
+                    self.totest[11] += (self.wmin[k, j] * 
+                                        self.kmat[11, j] * 
+                                        self.minp[k])
+                    
+        self.totest += self.mwev * 2
+        
+        self.evp_density()
+        
+        self.fc = self.mh2o / self.mol[11]
+        self.alc = (self.molal[12] - self.molal[13] + 
+                    self.molal[14] * 2 + self.molal[15] + 
+                    (self.molal[16] + self.molal[17]) * 2)
+        self.alc += (self.molal[18] + self.molal[19] + 
+                     self.molal[20] + self.molal[21] * 2)
+        self.alc += (self.molal[22] + self.molal[23] + 
+                     self.molal[24] - self.molal[25])
+        
+        self.std = (np.sum(self.molal[1:] * self.atom[1:]) - 
+                    self.molal[11] * self.atom[11])
+        
+        self.ee = 1000000e0 * self.dens / (1000e0 + self.std)
+        
+        self.hco3 = 0
+        self.co3 = 0
+        for k in range(1, self.nm+1):
+            if self.system == "c":
+                self.hco3 += self.wmin[k, 15] * self.min[k]
+                self.co3 += self.wmin[k, 14] * self.min[k]
+            elif self.system == "o":
+                self.hco3 += self.wmin[k, 15] * self.minp[k]
+                self.co3 += self.wmin[k, 14] * self.minp[k]
+        
+        self.ctot = (self.mol[0] + self.mol[14] + self.mol[15] + 
+                     self.mol[16] + self.mol[17] + 
+                     self.hco3 + self.co3)
+        
+        self.my_S = "_".join(self.mineral_S[(self.lmin == 1) | 
+                                            (self.min != 0)])
+        
+        self.loop_600(verbose, output)
+        return
                 
                     
     
@@ -2751,7 +2752,7 @@ class simulation:
             lines.append("number of steps      = {}".format(self.ncpt))
             lines.append("molal/molar factor   = {}".format(self.ee / 1000))
             if self.kinvariant == 0:
-                lines.append("increment (%)        = {}".format(self.xi * 100))
+                lines.append("increment (%)        = {}".format(self.increment * 100))
             else:
                 lines.append("increment (moles)    = {}".format(self.xinv))
             lines.append("density              = {}".format(self.dens))
@@ -2769,53 +2770,41 @@ class simulation:
                     file.write("\n")
                     file.close()
             
-        # LINE 842
         if output:
             lines = []
             for k in range(1, self.nm+1):
                 if self.system == "c":
                     if self.lmin[k] == 1 and self.lmin0[k] == 0:
-                        lines.append("start of precipitation of {} at fc = {}"\
-                                     "".format(self.mineral_S[k]), self.fc)
+                        lines.append("start of precipitation of {} at fc = {}".format(self.mineral_S[k], self.fc))
                     elif self.lmin[k] == 1 and self.lmin1[k] == 0:
                         if self.min[k] < self.min0[k]:
                             self.lmin1[k] = 1
-                            lines.append("end of precipitation and start of "\
-                                         "dissolution of {} at fc = {}"\
-                                         "".format(self.mineral_S[k]), self.fc)
+                            lines.append("end of precipitation and start of precipitation of {} at fc = {}".format(self.mineral_S[k], self.fc))
                     
                     elif self.lmin[k] == 1 and self.lmin1[k] == 1:
                         if self.min[k] > self.min0[k]:
                             self.lmin1[k] = 0
-                            lines.append("end of dissolution and of "\
-                                         "precipitation of {} at fc = {}"\
-                                         "".format(self.mineral_S[k]), self.fc)
+                            lines.append("end of dissolution and of precipitation of {} at fc = {}".format(self.mineral_S[k], self.fc))
                     
                     elif (self.lmin[k] == 0 and 
                           self.lmin1[k] == 1 and 
                           self.lmin0[k] == 1):
                         
                         self.lmin[k] = 0
-                        lines.append("end of dissolution and of "\
-                                     "saturation of {} at fc = {}"\
-                                     "".format(self.mineral_S[k]), self.fc)
+                        lines.append("end of dissolution and of saturation of {} at fc = {}".format(self.mineral_S[k], self.fc))
                     
                     elif (self.lmin[k] == 0 and
                           self.lmin1[k] == 0 and 
                           self.lmin0[k] == 1):
                         
                         self.lmin1[k] = 0
-                        lines.append("end of saturation of {} at fc = {}"\
-                                     " ".format(self.mineral_S[k], self.fc))
+                        lines.append("end of saturation of {} at fc = {}".format(self.mineral_S[k], self.fc))
                 elif self.system == "o":
                     if self.lmin[k] == 1 and self.lmin0[k] == 0:
-                        lines.append("start of precipitation of {} at "\
-                                     "fc = {}".format(self.mineral_S[k], 
+                        lines.append("start of precipitation of {} at fc = {}".format(self.mineral_S[k], 
                                                       self.fc))
                     elif self.lmin[k] == 0 and self.lmin0[k] == 1:
-                        lines.append("end of precipitation of {} at "\
-                                     "fc = {}".format(self.mineral_S[k],
-                                                      self.fc))
+                        lines.append("end of precipitation of {} at fc = {}".format(self.mineral_S[k], self.fc))
             with open(self.event_file, 'a') as file:
                 for line in lines:
                     file.write(line)
@@ -2852,7 +2841,7 @@ class simulation:
                 
                 
                 with open(self.chem_file, 'a') as file:
-                    file.write(",".join(line))
+                    file.write(",".join([str(i) for i in line]))
                     file.write("\n")
                     file.close()
                 
@@ -2872,7 +2861,7 @@ class simulation:
                             line.append(0)
                 
                 with open(self.min_file, 'a') as file:
-                    file.write(",".join(line))
+                    file.write(",".join([str(i) for i in line]))
                     file.write("\n")
                     file.close()
                 
@@ -2978,14 +2967,14 @@ class simulation:
         
         if self.kinvariant == 0 and self.initdeseq == 0:
             if self.inc_S == "auto":
-                self.xi = (51 - 8 * np.log10(self.std * 1000)) / 700
-                self.xi0 = self.xi
+                self.increment = (51 - 8 * np.log10(self.std * 1000)) / 700
+                self.inc0 = self.increment
             elif self.inc_S == "manu":
-                self.xi = self.xi0
-            self.mwev += self.mol[11] * self.xi
-            self.tot[11] -= 2 * self.mol[11] * self.xi
-            
-        self.loop_2000(verbose, output)
+                self.increment = self.inc0
+            self.mwev += self.mol[11] * self.increment
+            self.tot[11] -= 2 * self.mol[11] * self.increment
+        
+        self.loop_500(verbose, output)
         return
 
 
@@ -3009,8 +2998,8 @@ class simulation:
                 self.mol = self.mol0
                 self.tot[1:] = self.tot0[1:]
                 
-                self.mwev += self.mol[11] * self.xi
-                self.tot[11] -= 2 * self.mol[11] * self.xi
+                self.mwev += self.mol[11] * self.increment
+                self.tot[11] -= 2 * self.mol[11] * self.increment
                 
                 self.lmin[1:] = self.lmin0[1:]
                 self.min[1:] = self.min0[1:]
@@ -3102,7 +3091,7 @@ class simulation:
                     self.min[self.kinvar[ii]] = m
                     self.psol[self.kinvar[ii]] = p
                     
-        self.mol = self.mol[0]
+        self.mol = self.mol0
         self.tot[1:] = self.tot0[1:]
         self.lmin[1:] = self.lmin0[1:]
         self.min[1:] = self.min0[1:]
@@ -3110,8 +3099,8 @@ class simulation:
         
         self.mwev = self.mwev0
         self.nminer = self.nminer0
-        self.mwev += self.mol[11] * self.xi
-        self.tot[11] -= 2 * self.mol[11] * self.xi
+        self.mwev += self.mol[11] * self.increment
+        self.tot[11] -= 2 * self.mol[11] * self.increment
         self.kinvariant = 0
         self.lmin[self.ksupprim] = 0
         self.min[self.ksupprim] = 0
@@ -3123,7 +3112,6 @@ class simulation:
                   "".format(self.mineral_S[self.ksupprim]))
         
         self.loop_500(verbose, output)
-        
         return
     
     def compact(self):
@@ -3192,7 +3180,7 @@ class simulation:
                             z[self.n+l, j] = self.wmin[k, j] / self.mol[j]
                             p *= self.gact[j] ** self.wmin[k, j]
                             u += self.wmin[k, j] * np.log(self.mol[j])
-                        elif j == 1:
+                        elif j == 11:
                             z[self.n+l, j] = -self.wmin[k, 0] / self.mol[j]
                             p *= self.aw ** self.wmin[k, j]
                             u -= self.wmin[k, 0] * np.log(self.mol[j])
@@ -3249,7 +3237,7 @@ class simulation:
                     ni -= 1
                     for j in range(k, nj):
                         for i in range(1, ni+1):
-                            z[i, j] = z[ i, j+1]
+                            z[i, j] = z[i, j+1]
                     nj -= 1
             
             for k in range(1, ni+1):
@@ -3270,7 +3258,7 @@ class simulation:
             for k in range(1, nt+1):
                 if self.ica[k] == 0:
                     for i in range(ni, k-1, -1):
-                        xx[i+1] = zz[i]
+                        xx[i+1] = xx[i]
                     xx[k] = 0
                     ni += 1
             
@@ -3297,7 +3285,9 @@ class simulation:
                         self.compact()
                     
                     self.stop_simulation()
-                    return
+                    
+                    return(999)
+                
             for i in range(1, self.n+1):
                 self.mol[i] += xx[i] / nconv
             i = self.n
@@ -3335,8 +3325,8 @@ class simulation:
                         if s > 0:
                             if s * self.min[k] < hmin:
                                 hmin = s * self.min[k]
-            xinv = hmin / 100
-            if xinv <= 0:
+            self.xinv = hmin / 100
+            if self.xinv <= 0:
                 self.stop_simulation()
                 return
         self.ninv = 1
@@ -3365,8 +3355,9 @@ class simulation:
             for kk in range(1, self.kinvariant+1):
                 if k == self.kinvar[kk]:
                     for i in range(1, 16):
-                        tt0[nt] += self.min[k] * self.wmin[k, i] * self.kmat[11, i]
-        tt0[nt] -= xinv
+                        tt0[nt] += (self.min[k] * self.wmin[k, i] * 
+                                    self.kmat[11, i])
+        tt0[nt] -= self.xinv
         
         for i in range(1, nmin+1):
             for j in range(i, nmin+1):
@@ -3649,7 +3640,7 @@ class simulation:
             
             for i in range(1, 6):
                 for j in range(1, 6):
-                    (au, bu) = densite[index, 3:]
+                    (au, bu) = densite[index][3:]
                     self.au[i, j], self.bu[i, j] = au, bu
                     index += 1
             
@@ -3661,7 +3652,7 @@ class simulation:
                 s[i, j] = int((ic[i] + ia[j]) / 2) * cat[i] * ani[j] / u
     
                 dens += self.au[i, j] * s[i, j] + self.bu[i, j] * s[i, j] ** 2
-    
+        
         return
 
 
@@ -3677,7 +3668,7 @@ if __name__ == "__main__":
                  rem_minerals=['dolomite', 'nesquehonite',
                                'magnesite', 'hydromagnesite'],
                  verbose=True, call_evp=True)
-     
+
     t2 = perf_counter()
     
     print(t2-t1)
