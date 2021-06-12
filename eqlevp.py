@@ -2020,21 +2020,26 @@ class simulation:
 
 
         # Set parameters for simulation
-        self.ndepact = 0
+        
         self.ncpt = 0
         self.mwev = 0
-        self.npasi = 0
-        self.npasf = 0
-        self.initdeseq = 0
         self.fc = 1
         self.q0_S = ""
-        self.my_S = ""
-        self.my0_S = ""
         self.n = 25
         self.ntot = 12
         self.ncomplex = 14
         self.mh2o = 55.51
+        
         self.ksupprim = 0
+        self.ndepact = 0
+        self.npasi = 0
+        self.npasf = 0
+        self.initdeseq = 0
+        self.ninv = 0
+        self.xinv  = 0
+        
+        self.my_S = ""
+        self.my0_S = ""
         
         # Initialize blank arrays
         self.totinit = np.zeros(self.ntot+1)
