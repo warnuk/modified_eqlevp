@@ -2090,7 +2090,7 @@ class simulation:
 
         # Turn on all components by setting them to 1
         self.ica[1:self.n+1] = 1
-
+        
         # Write the heading into the chemistry file
         with open(self.chem_file, "a") as file:
             file.write(",".join(self.constit_S))
@@ -2127,12 +2127,11 @@ class simulation:
         # Read thermodynamic data for dissociation coefficients from complex3
         complex3 = np.zeros((self.ncomplex+1, 5))
         complex3[1:,:] = [i[1:] for i in read_file("complex3")]
-        self.psc[:] = 10 ** (complex3[:,0] +
-                             complex3[:,1] / 300 * self.temp +
-                             complex3[:,2] / 30000 * self.temp ** 2 +
-                             complex3[:,3] / 3000000 * self.temp ** 3 +
-                             complex3[:,4] / 300000000 * self.temp ** 4)
-        self.psc[0] = 0
+        self.psc[1:] = 10 ** (complex3[1:,0] +
+                              complex3[1:,1] / 300 * self.temp +
+                              complex3[1:,2] / 30000 * self.temp ** 2 +
+                              complex3[1:,3] / 3000000 * self.temp ** 3 +
+                              complex3[1:,4] / 300000000 * self.temp ** 4)
         self.psc3 = self.psc[3]
         self.psc[3] = self.psc[3] * self.psc[14] * 10 ** self.po
 
@@ -2301,7 +2300,6 @@ class simulation:
                 for k in range(1, self.nm+1):
                     if self.psol[k] * 0.95 > self.psol0[k]:
                         self.psol[k] *= 0.95
-                        
                         if verbose:
                             print(self.mineral_S[k], self.psol[k], self.psol0[k])
                     elif self.psol[k] * 0.95 <= self.psol0[k]:
@@ -2350,14 +2348,14 @@ class simulation:
             self.nminer = np.count_nonzero(self.lmin == 1)
             self.mineraux_S = "_".join(self.mineral_S[self.lmin == 1])
             
-            if self.ncpt == 1 or self.ncpt % self.output_step == 0:
+            if (self.ncpt == 1) or (self.ncpt % self.output_step == 0):
                 if self.nminer == 0:
                     print(self.ncmpt, "No_minerals")
                 else:
                     print(self.ncmpt, self.mineraux_S)
             
-            if (self.mwev > 0 and self.fc != 1 and 
-                self.nminer - self.nminer0 >= 2):
+            if ((self.mwev > 0) and (self.fc != 1) and 
+                (self.nminer - self.nminer0 >= 2)):
                 
                 self.increment /= 2
                 
@@ -2389,9 +2387,9 @@ class simulation:
                 
                 self.mol = self.mol0
                 self.tot = self.tot0
-                self.lmin = self.lmin0
-                self.min = self.min0
-                self.minp = self.minp0
+                self.lmin[1:] = self.lmin0[1:]
+                self.min[1:] = self.min0[1:]
+                self.minp[1:] = self.minp0[1:]
                 
                 self.mwev = self.mwev0
                 self.nminer = self.nminer0
@@ -2402,7 +2400,7 @@ class simulation:
                 self.loop_500(verbose, output)
                 return
             
-            if self.nminer > 1 and self.mineraux_S != self.m0_S:
+            if (self.nminer > 1) and (self.mineraux_S != self.m0_S):
                 ix, iy = 2, 3
                 
                 self.evp_invar(verbose, output)
@@ -2410,13 +2408,13 @@ class simulation:
                 if self.kinvariant > 0:
                     if self.system == "o":
                         for i in range(1, self.kinvariant+1):
-                            if (self.minp[self.kinvar[i]] == 0 and
-                                self.min[self.kinvar[i]] == 0):
+                            if ((self.minp[self.kinvar[i]] == 0) and
+                                (self.min[self.kinvar[i]] == 0)):
                                     
                                 self.kneuf = self.kinvar[i]
                         
                         self.loop_2000()
-                        return(999)
+                        return
                 
                     elif self.system == "c":
                         self.mol = self.mol0
@@ -2435,7 +2433,8 @@ class simulation:
             self.mol1 = self.mol
             
             if self.kinvariant == 0:
-                if self.reseq(verbose, output) == 999:
+                reseq = self.reseq(verbose, output) 
+                if reseq == 999:
                     return
                 
             elif self.kinvariant > 0:
@@ -2509,8 +2508,7 @@ class simulation:
         self.ncpt += 1
         
         if self.system == "o":
-            for k in range(1, self.nm+1):
-                self.minp[k] += self.min[k]
+            self.minp[1:] += self.min[1:]
             
             for i in range(1, 11):
                 for k in range(1, self.nm+1):
@@ -2554,7 +2552,7 @@ class simulation:
                                         self.kmat[11, j] * 
                                         self.minp[k])
                     
-        self.totest += self.mwev * 2
+        self.totest[11] += self.mwev * 2
         
         self.evp_density()
         
@@ -2572,8 +2570,7 @@ class simulation:
         
         self.ee = 1000000e0 * self.dens / (1000e0 + self.std)
         
-        self.hco3 = 0
-        self.co3 = 0
+        self.hco3, self.co3 = 0, 0
         for k in range(1, self.nm+1):
             if self.system == "c":
                 self.hco3 += self.wmin[k, 15] * self.min[k]
@@ -2613,11 +2610,11 @@ class simulation:
                         
                         if self.system == "c":
                             if self.min[i] > self.min0[i]:
-                                x_S = "{} {}".format(self.mineral_S[i], "P")
+                                x_S = "{} {}".format(self.mineral_S[i], "(p)")
                             elif self.min[i] < self.min0[i]:
-                                x_S = "{} {}".format(self.mineral_S[i], "D")
+                                x_S = "{} {}".format(self.mineral_S[i], "(d)")
                             elif self.min[i] == self.min0[i]:
-                                x_S = "{} {}".format(self.mineral_S[i], "=")
+                                x_S = "{} {}".format(self.mineral_S[i], "(=)")
                                 
                             min_name.append(x_S)
                             moles_prec.append(self.min[i])
@@ -2941,7 +2938,7 @@ class simulation:
             self.q1_S = ""
             self.q2_S = ""
         
-        if self.npasi == self.output_step:
+        if self.npasi == self.print_step:
             self.npasi = 0
         if self.npasf == self.output_step:
             self.npasf = 0
@@ -3410,7 +3407,7 @@ class simulation:
                 for i in range(1, nt):
                     t0[i, j] = self.wmin[k, i]
                 s = 0
-                for i in range(1, self.ncm):
+                for i in range(1, self.ncm+1):
                     s += self.wmin[k, i] * self.kmat[11, i]
                 t0[11, j] = s
         j += 1
@@ -3526,7 +3523,7 @@ class simulation:
                             if j != kk:
                                 jj += 1
                                 t2[ii, jj] = t0[i, j]
-                for k in range(1, n2+1):
+                for k in range(2, n2+1):
                     for i in range(k, n2+1):
                         if t2[i, k-1] != 0:
                             u = t2[k-1, k-1] / t2[i, k-1]
@@ -3536,7 +3533,7 @@ class simulation:
                                     t2[i, j] = 0
                 det1 = 1
                 for i in range(1, n2+1):
-                    if np.abs(t2[i, j]) < self.epsilon:
+                    if np.abs(t2[i, i]) < self.epsilon:
                         det1 = 0
                         break
                 if det1 == 1:
@@ -3640,19 +3637,17 @@ class simulation:
             
             for i in range(1, 6):
                 for j in range(1, 6):
-                    (au, bu) = densite[index][3:]
-                    self.au[i, j], self.bu[i, j] = au, bu
+                    (self.au[i, j], self.bu[i, j]) = densite[index][3:]
                     index += 1
             
-        dens, u = 1, 0
+        self.dens, u = 1, 0
         for j in range(1, nadens+1):
             u += ani[j] * ia[j]
         for i in range(1, ncdens+1):
             for j in range(1, nadens+1):
                 s[i, j] = int((ic[i] + ia[j]) / 2) * cat[i] * ani[j] / u
-    
-                dens += self.au[i, j] * s[i, j] + self.bu[i, j] * s[i, j] ** 2
-        
+                self.dens += (self.au[i, j] * s[i, j] + 
+                              self.bu[i, j] * s[i, j] ** 2)
         return
 
 

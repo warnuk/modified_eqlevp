@@ -14,3 +14,5 @@ input.dat.csv
 actp.py
 murtf0
 *.jc%
+*.jc%
+.DS_Store
