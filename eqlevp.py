@@ -68,30 +68,21 @@ class simulation:
 
         if call_evp:
             self.saturation_state(verbose=verbose)
-
             self.dilute_solution(dilute=dilute)
-
             self.modify_database(add_min=add_minerals,
                                  rem_min=rem_minerals,
                                  verbose=verbose, output=output)
-
             if add_minerals or rem_minerals:
                 self.min_S = "murtf0"
-
             # Modify convergence limits
             if pkmol:
                 self.pkmol = pkmol
             else:
                 self.pkmol = 0.001
-
             if pkeq:
                 self.pkeq = pkeq
             else:
                 self.pkeq = .0000000000001
-
-            
-            
-
             # Add heading to chem_file
             self.constit_S = ["label", "fc", "eva", "ds", "ph", "alk"]
 
@@ -154,7 +145,7 @@ class simulation:
             
             for i in old_attributes:
                 delattr(self, i)
-                
+             
             # Run EVP
             self.run_evp(verbose=verbose, output=output)
 
@@ -900,7 +891,7 @@ class simulation:
             text = read_file("coefft4")
 
             (self.nc, self.na, self.nn) = (int(i) for i in text[0])
-            self.nzc, self.nza = np.zeros(self.nc+1), np.zeros(self.na+1)
+            self.nzc, self.nza = np.zeros(self.nc+1, dtype=int), np.zeros(self.na+1, dtype=int)
             (self.b0, self.b1, self.b2, self.c0) = (np.zeros((self.nc+1, self.na+1), dtype=np.float64),
                                 np.zeros((self.nc+1, self.na+1), dtype=np.float64),
                                 np.zeros((self.nc+1, self.na+1), dtype=np.float64),
@@ -2035,6 +2026,7 @@ class simulation:
         self.npasi = 0
         self.npasf = 0
         self.initdeseq = 0
+        self.kinvariant = 0
         self.ninv = 0
         self.xinv  = 0
         
@@ -2048,7 +2040,7 @@ class simulation:
         self.psc = np.zeros(self.ncomplex+1)
 
         # Initialize blank arrays
-        self.nch = np.zeros(self.n+1)
+        self.nch = np.zeros(self.n+1, dtype=int)
         self.mol = np.zeros(self.n+1)
         self.mol0 = np.zeros(self.n+1)
         self.mol1 = np.zeros(self.n+1)
@@ -2072,9 +2064,12 @@ class simulation:
 
         # transfer output from EQL into input for EVP
         self.totinit[1:11] = self.tot[1:11]
-        self.nbmin = np.count_nonzero(self.totinit)
-        self.ica = np.zeros(self.n+self.nbmin+1)
-        self.kinvar = np.zeros(self.nbmin+4)
+        self.tot[:] = 0
+        
+        self.nbmin = np.count_nonzero(self.totinit != 0)
+        self.ica = np.zeros(self.n+self.nbmin+1, dtype=int)
+        self.kinvar = np.zeros(self.nbmin+4, dtype=int)
+        
         self.mol[0] = self.molal[15]
         self.mol[1:11] = self.molal[1:11]
         self.mol[11] = self.mh2o
@@ -2083,6 +2078,9 @@ class simulation:
         self.mol[14] = self.molal[14]
         self.mol[15] = self.molal[12]
         self.mol[16:26] = self.molal[16:26]
+        
+        self.mol0[:] = self.mol[:]
+        self.molal[:] = 0
 
         # Set the increment mode (automatic or manual)
         if self.increment == 0:
@@ -2121,13 +2119,6 @@ class simulation:
                 file.write("\n")
             file.close()
 
-        # Clear the mineral file by opening it in write mode
-        with open(self.min_file, "a") as file:
-            file.close()
-
-
-
-
         # BELOW THIS LINE IS OLD CODE FROM EQL METHOD. MAKE SURE TO UPDATE
         # Read thermodynamic data for dissociation coefficients from complex3
         complex3 = np.zeros((self.ncomplex+1, 5))
@@ -2143,7 +2134,7 @@ class simulation:
 
 
 
-        # Read eql mineral database from murtf2
+        # Read eql mineral database from murtf2/murtf0
         murtf = read_file(self.min_S)
 
         (self.nc, self.na, self.nm) = (int(i) for i in murtf[0])
@@ -2151,7 +2142,7 @@ class simulation:
 
         self.wmin = np.zeros((self.nm+1, self.ncm+1))
         self.mu = np.zeros(self.ncm+1)
-        self.linvar = np.zeros(self.nm+1)
+        self.linvar = np.zeros(self.nm+1, dtype=int)
 
         self.mineral_S = np.empty(self.nm+1, object)
         self.mum = np.zeros(self.nm+1)
@@ -2160,9 +2151,9 @@ class simulation:
         self.pai = np.zeros(self.nm+1)
         self.pai0 = np.zeros(self.nm+1)
 
-        self.lmin = np.zeros(self.nm+1)
-        self.lmin0 = np.zeros(self.nm+1)
-        self.lmin1 = np.zeros(self.nm+1)
+        self.lmin = np.zeros(self.nm+1, dtype=int)
+        self.lmin0 = np.zeros(self.nm+1, dtype=int)
+        self.lmin1 = np.zeros(self.nm+1, dtype=int)
 
         self.min = np.zeros(self.nm+1)
         self.min0 = np.zeros(self.nm+1)
@@ -2240,8 +2231,6 @@ class simulation:
         self.dca = 200 * np.abs(sc-sa) / (sc+sa)
         delta = sc-sa
 
-
-
         self.mol[ic] = self.mol[ic] - delta / 2 / self.nch[ic]
         self.mol[ia] = self.mol[ia] + delta / 2 / -self.nch[ia]
 
@@ -2270,9 +2259,8 @@ class simulation:
         
         self.evp_actp()
         
-        for i in range(0, self.n+1):
-            self.molal[i] = self.mol[i] * self.mh2o / self.mol[11]
-            self.act[i] = self.molal[i] * self.gact[i]
+        self.molal[:] = self.mol * self.mh2o / self.mol[11]
+        self.act[:] = self.molal * self.gact[i]
         
         for k in range(1, self.nm+1):
             self.pai[k] = 1
@@ -2995,7 +2983,7 @@ class simulation:
             else:
                 self.ksupprim = self.kinvar[2]
         elif self.kinvariant > 2:
-            gmin = 0
+            self.gmin = 0
             for ii in range(1, self.kinvariant+1):
                 self.mol = self.mol0
                 self.tot[1:] = self.tot0[1:]
@@ -3085,8 +3073,8 @@ class simulation:
                         
                         print()
                     
-                    if g < gmin:
-                        gmin = g
+                    if g < self.gmin:
+                        self.gmin = g
                         self.ksupprim = self.kinvar[ii]
                     
                     self.lmin[self.kinvar[ii]] = l
@@ -3457,7 +3445,7 @@ class simulation:
         self.ncm = 15
         self.ninvar = self.nbmin + 3
         
-        kinv = np.zeros((self.ninvar+1))
+        kinv = np.zeros((self.ninvar+1), dtype=int)
         minv_S = np.empty(self.ninvar+1, object)
         psminv = np.zeros((self.ninvar+1))
         winv = np.zeros((self.ninvar+1, self.ncm+1))
@@ -3654,6 +3642,10 @@ class simulation:
                 self.dens += (self.au[i, j] * s[i, j] + 
                               self.bu[i, j] * s[i, j] ** 2)
         return
+
+
+
+
 
 
 if __name__ == "__main__":
