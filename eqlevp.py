@@ -3105,7 +3105,9 @@ class simulation:
         return
     
     def compact(self):
-        pass
+        df = pd.read_csv(self.min_file)
+        df = df.loc[:, (df != 0).any(axis=0)]
+        df.to_csv(self.min_file, index=False)
     
     def stop_simulation(self):
         pass
@@ -3500,7 +3502,7 @@ class simulation:
                             t1[i, j] = 0
         det = 1
         for i in range(1, n1+1):
-            if np.abs(t1[i, j]) < self.epsilon:
+            if np.abs(t1[i, i]) < self.epsilon:
                 det = 0
                 break
         if det == 0:
@@ -3657,7 +3659,7 @@ if __name__ == "__main__":
                       ca=2.7, mg=1.3, cl=39.5, so4=0, alk=56.2, no3=0, si=0, b=0)
     
     test.run_eql(-3, "c", add_minerals=['calcite'],
-                 rem_minerals=['dolomite', 'nesquehonite',
+                 rem_minerals=['dolomite', 'nesquehonite', 'brucite',
                                'magnesite', 'hydromagnesite'],
                  verbose=True, call_evp=True)
 
