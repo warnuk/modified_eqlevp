@@ -2000,7 +2000,17 @@ class simulation:
         
         self.initialize_evp(verbose=verbose)
         
-        self.loop_500(verbose, output)
+        status = 0
+        while True:
+            if status == 0:
+                status = self.loop_500(verbose, output)
+            elif status == 1:
+                status = self.loop_600(verbose, output)
+            elif status == 2:
+                status = self.loop_2000(verbose, output)
+            elif status == 3:
+                break
+        
 
 
     def initialize_evp(self, verbose):
@@ -2346,7 +2356,8 @@ class simulation:
                     print(self.ncmpt, "No_minerals")
                 else:
                     print(self.ncmpt, self.mineraux_S)
-            
+                print()
+                
             if ((self.mwev > 0) and (self.fc != 1) and 
                 (self.nminer - self.nminer0 >= 2)):
                 
@@ -2372,8 +2383,7 @@ class simulation:
                         self.compact()
                 
                     self.stop_simulation()
-                    
-                    return
+                    return(3)
                     
                 if verbose:
                     print("reduction at increment {}".format(self.increment))
@@ -2391,7 +2401,7 @@ class simulation:
                 
                 # start the loop over, exit the parent call when done
                 self.loop_500(verbose, output)
-                return
+                return(0)
             
             if (self.nminer > 1) and (self.mineraux_S != self.m0_S):
                 ix, iy = 2, 3
@@ -2406,8 +2416,7 @@ class simulation:
                                     
                                 self.kneuf = self.kinvar[i]
                         
-                        self.loop_2000()
-                        return
+                        return(2)
                 
                     elif self.system == "c":
                         self.mol = self.mol0
@@ -2426,9 +2435,9 @@ class simulation:
             self.mol1 = self.mol
             
             if self.kinvariant == 0:
-                reseq = self.reseq(verbose, output) 
-                if reseq == 999:
-                    return
+                status = self.reseq(verbose, output)
+                if status == 100:
+                    return(3)
                 
             elif self.kinvariant > 0:
                 self.reseqinv()
@@ -2487,8 +2496,8 @@ class simulation:
                     self.compact()
                 
                 self.stop_simulation()
-                return
-            
+                return(3)
+                
         for k in range(1, self.nm+1):
             if self.psol[k] == 1e+50 and self.linvar[k] == 0:
                 self.psol[k] = self.psol0[k]
@@ -2579,8 +2588,7 @@ class simulation:
         self.my_S = "_".join(self.mineral_S[(self.lmin == 1) | 
                                             (self.min != 0)])
         
-        self.loop_600(verbose, output)
-        return
+        return(1)
                 
                     
     
@@ -2918,9 +2926,8 @@ class simulation:
                 if output:
                     self.compact()
                 self.stop_simulation()
-                return
+                return(3)
             
-            # Line 1004
         elif (self.kinvariant == 0 and
               (np.abs(self.act[11] - self.act0[11]) / 
                (self.act[11] + self.act0[11])) > .0000000001):
@@ -2964,8 +2971,7 @@ class simulation:
             self.mwev += self.mol[11] * self.increment
             self.tot[11] -= 2 * self.mol[11] * self.increment
         
-        self.loop_500(verbose, output)
-        return
+        return(0)
 
 
             
@@ -3101,8 +3107,7 @@ class simulation:
             print("mineral definitely removed: {}"\
                   "".format(self.mineral_S[self.ksupprim]))
         
-        self.loop_500(verbose, output)
-        return
+        return(0)
     
     def compact(self):
         df = pd.read_csv(self.min_file)
@@ -3278,7 +3283,7 @@ class simulation:
                     
                     self.stop_simulation()
                     
-                    return(999)
+                    return(100)
                 
             for i in range(1, self.n+1):
                 self.mol[i] += xx[i] / nconv
