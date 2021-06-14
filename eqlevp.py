@@ -2005,6 +2005,10 @@ class simulation:
 
     def run_evp(self, verbose, output):
 
+        self.output_step = 1
+        self.print_step = 1
+        self.increment = 0
+        
         if verbose:
             print("\nThis is EVP..............\n")
             print("STARTING THE EVAPORATION PROGRAM\n")
@@ -2027,14 +2031,7 @@ class simulation:
 
 
     def initialize_evp(self, verbose):
-        # temporary parameters for testing
-        self.output_step = 1
-        self.print_step = 1
-        self.increment = 0
-
-
         # Set parameters for simulation
-        
         self.ncpt = 0
         self.mwev = 0
         self.fc = 1
@@ -2322,8 +2319,8 @@ class simulation:
                     elif self.psol[k] * 0.95 <= self.psol0[k]:
                         self.psol[k] = self.psol0[k]
         
-        self.nw = 1
-        while self.nw != 0:
+        nw = 1
+        while nw != 0:
             
             self.ncmpt += 1
             self.m0_S = "_".join(self.mineral_S[self.lmin == 1])
@@ -2371,7 +2368,6 @@ class simulation:
                         print(self.ncmpt, "No_minerals")
                     else:
                         print(self.ncmpt, self.mineraux_S)
-                    print()
                 
             if ((self.mwev > 0) and (self.fc != 1) and 
                 (self.nminer - self.nminer0 >= 2)):
@@ -2414,8 +2410,7 @@ class simulation:
                 self.mwev += self.mol[11] * self.increment
                 self.tot[11] -= 2 * self.mol[11] * self.increment
                 
-                # start the loop over, exit the parent call when done
-                self.loop_500(verbose, output)
+                # exit the loop with return 0: start the loop over
                 return(0)
             
             if (self.nminer > 1) and (self.mineraux_S != self.m0_S):
@@ -2430,7 +2425,7 @@ class simulation:
                                 (self.min[self.kinvar[i]] == 0)):
                                     
                                 self.kneuf = self.kinvar[i]
-                        
+                        # exit the loop with return status 2: call 20
                         return(2)
                 
                     elif self.system == "c":
@@ -2463,14 +2458,14 @@ class simulation:
                            self.gact[13] / self.mol[11] / self.gact[11] / 
                            self.psc3 / self.gact[0])
         
-            self.nw = 0
+            nw = 0
             
             for i in range(1, self.n+1):
                 if self.mol[i] > 0:
                     if (200 * np.abs(self.mol[i] - self.mol1[i]) / 
                         (self.mol[i] + self.mol1[i]) > self.pkmol):
                         
-                        self.nw = 1
+                        nw = 1
                         
             self.ki = self.kinvariant
             
@@ -2482,12 +2477,13 @@ class simulation:
                         self.psol[self.kinvar[k]] = 1e+50
                         self.mwev += self.mol[11] * self.increment
                         self.tot[11] -= 2 * self.mol[11] * self.increment
-                        self.ki, self.nw = 0, 1
+                        self.ki = 0
+                        nw = 1
                         
             self.kinvariant = self.ki
             
-            if self.nw == 1:
-                self.mol = (self.mol + self.mol1) / 2
+            if nw == 1:
+                self.mol[:] = (self.mol[:] + self.mol1[:]) / 2
             
             if self.ncmpt == 500:
                 if verbose:
@@ -2512,7 +2508,9 @@ class simulation:
                 
                 self.stop_simulation()
                 return(3)
-                
+        if verbose:
+            print()
+            
         for k in range(1, self.nm+1):
             if self.psol[k] == 1e+50 and self.linvar[k] == 0:
                 self.psol[k] = self.psol0[k]
@@ -2792,12 +2790,12 @@ class simulation:
                     elif self.lmin[k] == 1 and self.lmin1[k] == 0:
                         if self.min[k] < self.min0[k]:
                             self.lmin1[k] = 1
-                            lines.append("end of precipitation and start of precipitation of {} at fc = {}".format(self.mineral_S[k], self.fc))
+                            lines.append("end of precipitation and start of dissolution of {} at fc = {}".format(self.mineral_S[k], self.fc))
                     
                     elif self.lmin[k] == 1 and self.lmin1[k] == 1:
                         if self.min[k] > self.min0[k]:
                             self.lmin1[k] = 0
-                            lines.append("end of dissolution and of precipitation of {} at fc = {}".format(self.mineral_S[k], self.fc))
+                            lines.append("end of dissolution and start of precipitation of {} at fc = {}".format(self.mineral_S[k], self.fc))
                     
                     elif (self.lmin[k] == 0 and 
                           self.lmin1[k] == 1 and 
@@ -3034,8 +3032,8 @@ class simulation:
                               "".format(self.mineral_S[self.kinvar[ii]]))
                     
                     self.ncmptinv = 0
-                    self.nw = 1
-                    while self.nw != 0:
+                    nw = 1
+                    while nw != 0:
                         self.ncmptiv += 1
                         
                         self.gact0 = self.gact
@@ -3065,19 +3063,19 @@ class simulation:
                         self.nminer = np.count_nonzero(self.lmin == 1)
                         self.mineraux_S = "_".join(self.mineral_S[self.lmin == 1])
                     
-                    if verbose:
-                        print(self.ncmptinv, self.mineraux_S)
+                        if verbose:
+                            print(self.ncmptinv, self.mineraux_S)
+                            
+                        self.mol1 = self.mol
                         
-                    self.mol1 = self.mol
-                    
-                    self.reseq()
-                    
-                    self.molal = self.mol * self.mh2o / self.mol[11]
-                    
-                    self.nw = 0
-                    for i in range(0, self.n+1):
-                        if np.abs(self.mol1[i] - self.mol[i]) > self.pkmol:
-                            self.nw = 1
+                        self.reseq()
+                        
+                        self.molal = self.mol * self.mh2o / self.mol[11]
+                        
+                        nw = 0
+                        for i in range(0, self.n+1):
+                            if np.abs(self.mol1[i] - self.mol[i]) > self.pkmol:
+                                nw = 1
                     
                     g = 0
                     for i in range(0, self.ncm+1):
