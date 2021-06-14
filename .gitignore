@@ -16,3 +16,10 @@ murtf0
 *.jc%
 *.jc%
 .DS_Store
+*.jo%
+*.jo&
+*.jo@
+*.log
+*.tra
+__pycache__/eqlevp.cpython-38.pyc
+*.pyc

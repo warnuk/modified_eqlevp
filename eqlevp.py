@@ -1683,41 +1683,48 @@ class simulation:
             print()
 
         if self.nwm > self.nminer:
-            print("VIOLATION OF THE PHASE RULE:")
-            print("The maximum number of minerals " \
-                  "allowed is {}".format(self.nminer))
-            print("The evaporation program cannot start with this paragenesis")
-            print()
+            if verbose:
+                print("VIOLATION OF THE PHASE RULE:")
+                print("The maximum number of minerals " \
+                        "allowed is {}".format(self.nminer))
+                print("The evaporation program cannot start with this paragenesis")
+                print()
         elif self.nwm <= self.nminer:
             self.invar()
             if self.kinvariant > 0:
-                print("The activity of water is constrained by:")
-                print()
-                for k in range(1, self.kinvariant+1):
-                    print(self.mineral_S[self.kinvar[k]])
-                print()
+                if verbose:
+                    print("The activity of water is constrained by:")
+                    print()
+                    for k in range(1, self.kinvariant+1):
+                        print(self.mineral_S[self.kinvar[k]])
+                    print()
             elif self.kinvariant == -1:
-                print("System in thermodynamic desequilibrium")
-                print("The activity of water is constrained at "\
-                      "different values")
-                print("by more than one mineral assemblage")
-                print()
+                if verbose:
+                    print("System in thermodynamic desequilibrium")
+                    print("The activity of water is constrained at "\
+                            "different values")
+                    print("by more than one mineral assemblage")
+                    print()
             elif self.kinvariant == -2:
-                print("System in thermodynamic desequilibrium:")
-                print("inconsistant mineral assemblage")
-                print()
+                if verbose:
+                    print("System in thermodynamic desequilibrium:")
+                    print("inconsistant mineral assemblage")
+                    print()
             elif self.kinvariant == 0:
-                print("No invariant paragensis detected")
-                print()
+                if verbose:
+                    print("No invariant paragensis detected")
+                    print()
 
             if self.kinvariant != 0:
-                print("The evaporation program cannot start with this "\
-                      "paragenesis")
-                print()
+                if verbose:
+                    print("The evaporation program cannot start with this "\
+                            "paragenesis")
+                    print()
 
             if self.kinvariant == 0 and self.nwmp > 0:
-                print("The solution is close to saturation in {} mineral(s) "\
-                      "of the data base MURTF3:".format(self.nwmp))
+                if verbose:
+                    print("The solution is close to saturation in {} mineral(s) "\
+                            "of the data base MURTF3:".format(self.nwmp))
                 close_saturation = []
                 for k in range(1, self.nm+1):
                     if (self.pai[k] / self.psol[k] >= 0.9 and
@@ -1727,35 +1734,41 @@ class simulation:
                         self.lmin[k] = 1
 
                 close_saturation = pd.DataFrame(close_saturation)
-                with pd.option_context('display.max_rows', None,
+                if verbose:
+                    with pd.option_context('display.max_rows', None,
                                                'display.max_columns', None):
-                    print(close_saturation.to_string(index=False, header=False))
+                        print(close_saturation.to_string(index=False, header=False))
                 print()
 
                 self.invar()
 
                 if self.kinvariant > 0:
-                    print("At the start of evaporation, the activity of "\
-                          "water may be constrained by: ")
+                    if verbose:
+                        print("At the start of evaporation, the activity of "\
+                                "water may be constrained by: ")
 
-                    for k in range(1, self.kinvariant+1):
-                        print(self.mineral_S[self.kinvar[k]])
-                    print()
+                        for k in range(1, self.kinvariant+1):
+                            print(self.mineral_S[self.kinvar[k]])
+                        print()
                 elif self.kinvariant == -1:
-                    print("System in thermodynamic desequilibrium")
-                    print("The activity of water is constrained at "\
-                          "different values")
-                    print("by more than one mineral assemblage")
+                    if verbose:
+                        print("System in thermodynamic desequilibrium")
+                        print("The activity of water is constrained at "\
+                                "different values")
+                        print("by more than one mineral assemblage")
                 elif self.kinvariant == -2:
-                    print("System in thermodynamic desequilibrium:")
-                    print("inconsistant mineral assemblage")
-                    print()
+                    if verbose:
+                        print("System in thermodynamic desequilibrium:")
+                        print("inconsistant mineral assemblage")
+                        print()
                 elif self.kinvariant == 0:
-                    print("No invariant paragensis detected")
-                    print()
+                    if verbose:
+                        print("No invariant paragensis detected")
+                        print()
                 if self.kinvariant != 0:
-                    print("If the evaporation program does not start")
-                    print("slightly dilute the solution again")
+                    if verbose:
+                        print("If the evaporation program does not start")
+                        print("slightly dilute the solution again")
 
     def dilute_solution(self, dilute):
         pass
@@ -2305,6 +2318,7 @@ class simulation:
                         self.psol[k] *= 0.95
                         if verbose:
                             print(self.mineral_S[k], self.psol[k], self.psol0[k])
+                            print()
                     elif self.psol[k] * 0.95 <= self.psol0[k]:
                         self.psol[k] = self.psol0[k]
         
@@ -2346,17 +2360,18 @@ class simulation:
                     if self.pai[k] < self.psol0[k] * 0.9:
                         self.linvar[k] = 0
                     elif self.pai[k] >= self.psol0[k]:
-                        self.linvar = 1
+                        self.linvar[k] = 1
             
             self.nminer = np.count_nonzero(self.lmin == 1)
             self.mineraux_S = "_".join(self.mineral_S[self.lmin == 1])
             
             if (self.ncpt == 1) or (self.ncpt % self.output_step == 0):
-                if self.nminer == 0:
-                    print(self.ncmpt, "No_minerals")
-                else:
-                    print(self.ncmpt, self.mineraux_S)
-                print()
+                if verbose:
+                    if self.nminer == 0:
+                        print(self.ncmpt, "No_minerals")
+                    else:
+                        print(self.ncmpt, self.mineraux_S)
+                    print()
                 
             if ((self.mwev > 0) and (self.fc != 1) and 
                 (self.nminer - self.nminer0 >= 2)):
@@ -2788,7 +2803,7 @@ class simulation:
                           self.lmin1[k] == 1 and 
                           self.lmin0[k] == 1):
                         
-                        self.lmin[k] = 0
+                        self.lmin1[k] = 0
                         lines.append("end of dissolution and of saturation of {} at fc = {}".format(self.mineral_S[k], self.fc))
                     
                     elif (self.lmin[k] == 0 and
@@ -2804,10 +2819,11 @@ class simulation:
                     elif self.lmin[k] == 0 and self.lmin0[k] == 1:
                         lines.append("end of precipitation of {} at fc = {}".format(self.mineral_S[k], self.fc))
             with open(self.event_file, 'a') as file:
-                for line in lines:
-                    file.write(line)
+                if len(lines) > 0:
+                    for line in lines:
+                        file.write(line)
+                        file.write("\n")
                     file.write("\n")
-                file.write("\n")
                 file.close()
             
             if (self.ncpt == 1 or 
@@ -2868,7 +2884,7 @@ class simulation:
             if output:
                 self.compact()
             self.stop_simulation()
-            return
+            return(3)
         
         if (self.mwev > 0 and 
             self.kinvariant == 0 and 
