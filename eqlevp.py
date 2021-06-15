@@ -2446,11 +2446,13 @@ class simulation:
             
             if self.kinvariant == 0:
                 status = self.reseq(verbose, output)
-                if status == 100:
+                if status == 3:
                     return(3)
                 
             elif self.kinvariant > 0:
-                self.reseqinv()
+                status = self.reseqinv()
+                if status == 3:
+                    return(3)
                 self.mwev += self.xinv/2
                 self.tot[11] -= self.xinv
             
@@ -3251,7 +3253,7 @@ class simulation:
                             z[i, j] = z[i, j+1]
                     nj -= 1
             
-            for k in range(1, ni+1):
+            for k in range(2, ni+1):
                 for i in range(k, ni+1):
                     if np.abs(z[i, k-1]) > self.epsilon:
                         u = z[k-1, k-1] / z[i, k-1]
@@ -3297,7 +3299,7 @@ class simulation:
                     
                     self.stop_simulation()
                     
-                    return(100)
+                    return(3)
                 
             for i in range(1, self.n+1):
                 self.mol[i] += xx[i] / nconv
@@ -3339,7 +3341,7 @@ class simulation:
             self.xinv = hmin / 100
             if self.xinv <= 0:
                 self.stop_simulation()
-                return
+                return(3)
         self.ninv = 1
         j = 0
         for k in range(1, self.nm+1):

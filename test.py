@@ -45,7 +45,7 @@ if __name__ == "__main__":
         
         plt.plot(x, y, label=label)
 
-    plt.title("30ºC, 1000ppm, closed system")
+    plt.title("30ºC, 1000ppm, open system")
     plt.xlabel("log(fc)")
     plt.ylabel("moles precipitated")
     plt.yscale('log')
