@@ -4,6 +4,7 @@ Created on Mon May 24 10:43:01 2021
 
 @author: warnu
 """
+
 import numpy as np
 import pandas as pd
 from datetime import datetime
@@ -39,24 +40,21 @@ class simulation:
     def run_eql(self, pco2, system, units="molal", dilute=1,
                 add_minerals=None, rem_minerals=None, max_salinity=0,
                 pkmol=None, pkeq=None, verbose=True, output=True,
-                call_evp=True, print_step=1, output_step=1, increment=0):
+                call_evp=True):
 
         # Set additional object attributes to the
         # parameters used in this simulation
         self.system = system
+        self.units = units
         self.dil = dilute
         self.pco2 = pco2
         self.stdmax = max_salinity
-        self.print_step = print_step
-        self.output_step = output_step
-        self.increment = increment
-        self.out_units = units
 
         if verbose:
             print("\nThis is EQL..............\n")
             print(datetime.now().strftime("%a %b %d %H:%M:%S %Y"), '\n')
 
-        self.initialize_eql(verbose=verbose, output=output)
+        self.initialize_eql(system=system, verbose=verbose, output=output)
 
         self.calculate_molalities(verbose=verbose)
 
@@ -68,59 +66,105 @@ class simulation:
 
         self.print_screen(verbose=verbose, output=output)
 
-        
-        self.saturation_state(verbose=verbose)
-        self.dilute_solution(dilute=dilute)
-        self.modify_database(add_min=add_minerals,rem_min=rem_minerals, verbose=verbose, output=output)
-        
-        if add_minerals or rem_minerals:
-            self.min_S = "murtf0"
-
-        # Modify convergence limits
-        if pkmol:
-            self.pkmol = pkmol
-        else:
-            self.pkmol = 0.001e0
-        if pkeq:
-            self.pkeq = pkeq
-        else:
-            self.pkeq = .0000000000001e0
-
-        # Add heading to chem_file
-        self.constit_S = ["label", "fc", "eva", "ds", "ph", "alk"]
-        for i in range(1, 9):
-            if self.tot[i] > 0:
-                self.constit_S.append(self.aq_S[i])
-        if self.tot[9] != 0:
-            self.constit_S.append('b')
-        if self.tot[10] != 0:
-            self.constit_S.append('si')
-        self.constit_S.append('tds')
-             
-        # Run EVP
         if call_evp:
-            # Clear out unnecessary simulation attributes
-            old_attributes = ['albor', 'alcar', 'alh', 'aloh', 'alsil', 
-                              'altest', 'ani', 'ap0', 'aq_S', 'atom', 
-                              'b0', 'b1', 'b2', 'bp0', 'c0', 'cat', 'iani',
-                              'icat', 'kmat', 'la', 'lc']
+            self.saturation_state(verbose=verbose)
+            self.dilute_solution(dilute=dilute)
+            self.modify_database(add_min=add_minerals,
+                                 rem_min=rem_minerals,
+                                 verbose=verbose, output=output)
+            if add_minerals or rem_minerals:
+                self.min_S = "murtf0"
+            # Modify convergence limits
+            if pkmol:
+                self.pkmol = pkmol
+            else:
+                self.pkmol = 0.001
+            if pkeq:
+                self.pkeq = pkeq
+            else:
+                self.pkeq = .0000000000001
+            # Add heading to chem_file
+            self.constit_S = ["label", "fc", "eva", "ds", "ph", "alk"]
+
+            for i in range(1, 9):
+                if self.tot[i] > 0:
+                    self.constit_S.append(self.aq_S[i])
+            if self.tot[9] != 0:
+                self.constit_S.append('b')
+            if self.tot[10] != 0:
+                self.constit_S.append('si')
+            self.constit_S.append('tds')
+
+            # # Write transfer file name to stockage file
+            # with open("stockage", "w") as file:
+            #     file.write(self.transfer_file)
+            #     file.close()
+
+            # # Write transfer information to the transfer
+            # lines =[self.temp, self.tinit, self.ph, self.phinit, self.po,
+            #         self.poinit, self.diltot]
+            # lines.append(",".join(self.constit_S))
+            # for i in range(1, 11):
+            #     lines.append(self.tot[i])
+            # lines.append(self.molal[15])
+            # for i in range(1, 11):
+            #     lines.append(self.molal[i])
+            # lines.append(self.mh2o)
+            # lines.append(self.molal[13])
+            # lines.append(self.molal[11])
+            # lines.append(self.molal[14])
+            # lines.append(self.molal[12])
+            # for i in range(16, 26):
+            #     lines.append(self.molal[i])
+            # lines.append(system)
+            # lines.append(1)
+            # lines.append(1)
+            # lines.append('y')
+            # lines.append(1)
+            # lines.append(1)
+            # lines.append(self.units)
+            # lines.append(self.chem_file)
+            # lines.append(self.event_file)
+            # lines.append(self.min_file)
+            # lines.append(self.min_S)
+            # lines.append(max_salinity)
+            # lines.append(self.pkmol)
+            # lines.append(self.pkeq)
+
+            # lines = [str(i) for i in lines]
+
+            # with open(self.transfer_file, "w") as file:
+            #     file.write("\n".join(lines))
+            #     file.close()
+                    
+            # Clear out unnecessary simulation attributs
+            old_attributes = ['act', 'albor', 'alcar', 'alh', 'aloh', 'alsil', 
+                              'altest', 'ani', 'ap0', 'aq_S', 'atom', 'aw',
+                              'b0', 'b1', 'b2', 'bp0', 'c0', 'cat', 'dph',
+                              'ee', 'ef', 'eps', 'gact', 'iani', 'icat', 
+                              'kmat', 'la', 'lc', 'kinvar', 'lmin', 
+                              'mineral0_S', 'mineral_S', 'mu', 'mum', 'nch',
+                              'nchani', 'nchcat', 'ndepact', 'nwmin']
             
             for i in old_attributes:
                 delattr(self, i)
-
+             
+            # Run EVP
             self.run_evp(verbose=verbose, output=output)
 
-    def initialize_eql(self, verbose, output):
+    def initialize_eql(self, system, verbose, output):
         
         # Initialize files used by EQL/EVP
         if output:
                 self.log_file = "{}.log".format(self.label)
-                self.chem_file = "{}.j{}&".format(self.label, self.system)
-                self.event_file = "{}.j{}@".format(self.label, self.system)
-                self.min_file = "{}.j{}%".format(self.label, self.system)
+                self.chem_file = "{}.j{}&".format(self.label, system)
+                self.event_file = "{}.j{}@".format(self.label, system)
+                self.min_file = "{}.j{}%".format(self.label, system)
+                self.transfer_file = "{}.tra".format(self.label)
                 
                 for filename in [self.log_file, self.chem_file, 
-                                 self.event_file, self.min_file]:
+                                 self.event_file, self.min_file, 
+                                 self.transfer_file]:
                     with open(filename, "w") as file:
                         file.close()
         
@@ -134,6 +178,7 @@ class simulation:
         self.epsilon = 1e-8
 
         self.max_constit = 30
+        self.max_nr = 10
         self.max_conv=100
 
         self.ndepact = 0
@@ -151,25 +196,25 @@ class simulation:
 
         # Initialize blank arrays
         self.constit_S = np.empty(self.max_constit+1, object)
-        self.psc = np.zeros(15, np.float64)
-        self.tot = np.zeros(self.ntot+1, np.float64)
-        self.tot0 = np.zeros(self.ntot+1, np.float64)
-        self.totinit = np.zeros(self.n0+1, np.float64)
-        self.nch = np.zeros(self.n+1, np.int64)
-        self.molal = np.zeros(self.n+1, np.float64)
-        self.act = np.zeros(self.n+1, np.float64)
-        self.gact = np.zeros(self.n+1, np.float64)
+        self.psc = np.zeros(15)
+        self.tot = np.zeros(self.ntot+1)
+        self.tot0 = np.zeros(self.ntot+1)
+        self.totinit = np.zeros(self.n0+1)
+        self.nch = np.zeros(self.n+1)
+        self.molal = np.zeros(self.n+1)
+        self.act = np.zeros(self.n+1)
+        self.gact = np.zeros(self.n+1)
         self.aq_S = np.empty(self.n+1, object)
-        self.atom = np.zeros(self.n+1, np.float64)
-        self.kmat = np.zeros((self.n+1, self.n+1), np.int64)
-        self.ica = np.zeros(self.n+1, np.int64)
-        self.xx = np.zeros(self.n+1, np.float64)
-        self.z = np.zeros((self.n+1, self.n+1), np.float64)
-        self.zz = np.zeros(self.n+1, np.float64)
-        self.cat = np.zeros(self.max_cat+1, np.float64)
-        self.ani = np.zeros(self.max_an+1, np.float64)
-        self.nchcat = np.zeros(self.max_cat+1, np.int64)
-        self.nchani = np.zeros(self.max_an+1, np.int64)
+        self.atom = np.zeros(self.n+1)
+        self.kmat = np.zeros((self.n+1, self.n+1))
+        self.ica = np.ones(self.n+1)
+        self.xx = np.zeros(self.n+1)
+        self.z = np.zeros((self.n+1, self.n+1))
+        self.zz = np.zeros(self.n+1)
+        self.cat = np.zeros(self.max_cat+1)
+        self.ani = np.zeros(self.max_an+1)
+        self.nchcat = np.zeros(self.max_cat+1)
+        self.nchani = np.zeros(self.max_an+1)
 
 
         # get concentrations from parent inputs
@@ -191,14 +236,6 @@ class simulation:
 
         # Get number of components
         self.nminer = np.count_nonzero(self.tot[1:11])+1
-        
-        # Set the units based on the density of the water
-        if self.dens == 0:
-            self.dens = 1
-        if self.dens == 1:
-            self.units = "molal"
-        else:
-            self.units = "molar"
 
         # Read aqu database
         aqu = read_file("aqu.dat")
@@ -206,36 +243,36 @@ class simulation:
         self.atom[:] = [line[1] for line in aqu]
         self.nch[:] = [line[2] for line in aqu]
 
-        # Set ICA
-        self.ica[1:] = 1
-
         # Read kmat from matrice1
         self.kmat[1:,1:] = [line[:] for line in read_file("matrice1")]
-        self.kmat[13, 0] = -1; self.kmat[15, 0] = -1
-        self.kmat[20, 0] = 3; self.kmat[21, 0] = 5
+        self.kmat[13, 0] = -1
+        self.kmat[15, 0] = -1
+        self.kmat[20, 0] = 3
+        self.kmat[21, 0] = 5
 
         # Read thermodynamic data for dissociation coefficients from complex3
         complex3 = np.zeros((self.ncomplex+1, 5))
         complex3[1:,:] = [i[1:] for i in read_file("complex3")]
-        self.psc[1:] = 10 ** (complex3[1:,0] +
-                              complex3[1:,1] / 300 * self.temp +
-                              complex3[1:,2] / 30000 * self.temp ** 2 +
-                              complex3[1:,3] / 3000000 * self.temp ** 3 +
-                              complex3[1:,4] / 300000000 * self.temp ** 4)
+        self.psc[:] = 10 ** (complex3[:,0] +
+                             complex3[:,1] / 300 * self.temp +
+                             complex3[:,2] / 30000 * self.temp ** 2 +
+                             complex3[:,3] / 3000000 * self.temp ** 3 +
+                             complex3[:,4] / 300000000 * self.temp ** 4)
+        self.psc[0] = 0
 
         # Read eql mineral database from murtf2
         murtf2 = read_file("murtf2")
         (self.nc, self.na, self.nm) = (int(i) for i in murtf2[0])
         self.nt = self.nc + self.na
 
-        self.wmin = np.zeros((self.nm+1, self.nt+1), np.float64)
-        self.lmin = np.zeros(self.nm+1, np.int64)
-        self.nwmin = np.zeros(self.nm+1, np.int64)
+        self.wmin = np.zeros((self.nm+1, self.nt+1))
+        self.lmin = np.zeros(self.nm+1)
+        self.nwmin = np.zeros(self.nm+1)
         self.mineral_S = np.empty(self.nm+1, object)
-        self.mu = np.zeros(self.nt+1, np.float64)
-        self.psol = np.zeros(self.nm+1, np.float64)
-        self.pai = np.zeros(self.nm+1, np.float64)
-        self.kinvar = np.zeros(self.nt+1, np.int64)
+        self.mu = np.zeros(self.nt+1)
+        self.psol = np.zeros(self.nm+1)
+        self.pai = np.zeros(self.nm+1)
+        self.kinvar = np.zeros(self.nt+1)
 
         ion_list = murtf2[1:self.nt+2]
         ion_list.insert(0, None)
@@ -314,8 +351,8 @@ class simulation:
             print("Electrical balance = {} %".format((self.dca * 100 +
                                                       0.5) / 100))
 
-        self.tot[icat] -= delta / 2 / self.nch[icat]
-        self.tot[iani] += delta / 2 / -self.nch[iani]
+        self.tot[icat] = self.tot[icat] - delta / 2 / self.nch[icat]
+        self.tot[iani] = self.tot[iani] + delta / 2 / -self.nch[iani]
 
         self.tot0[1:13] = self.tot[1:13]
 
@@ -330,12 +367,15 @@ class simulation:
         self.mineral0_S[1:] = [i[0] for i in murtf3[(2+self.nc+self.na):]]
         self.nwmin[np.in1d(self.mineral_S, self.mineral0_S)] = 1
 
-        return
+        return()
 
     def calculate_molalities(self, verbose=True):
-        self.molal[1] = self.tot[1]; self.molal[2] = self.tot[2]
-        self.molal[3] = self.tot[3]; self.molal[6] = self.tot[6]
-        self.molal[8] = self.tot[8]; self.molal[11] = self.tot[11]
+        self.molal[1] = self.tot[1]
+        self.molal[2] = self.tot[2]
+        self.molal[3] = self.tot[3]
+        self.molal[6] = self.tot[6]
+        self.molal[8] = self.tot[8]
+        self.molal[11] = self.tot[11]
         self.molal[13] = self.psc[1] / self.molal[11]
         if self.tot[9] > 0:
             a = 1 + self.molal[13] / self.psc[7]
@@ -344,16 +384,18 @@ class simulation:
             xu = self.tot[9] / 2
             u = xu
 
-            while True:
-                eq = a * xu + b * xu ** 3 + c * xu ** 4
-                if (200 * np.abs(eq - self.tot[9]) / (eq + self.tot[9]) < self.pk):
-                    break
+            eq = a * xu + b * xu ** 3 + c * xu ** 4
+            while (200 * abs(eq - self.tot[9]) /
+                           (eq + self.tot[9]) >= self.pk):
+
                 u = u / 2
                 if eq > self.tot[9]:
                     xu -= u
                 else:
                     xu += u
-                    
+
+                eq = a * xu + b * xu ** 3 + c * xu ** 4
+
             self.molal[9] = xu
             self.molal[19] = (self.molal[9] * self.molal[13] / self.psc[7])
             self.molal[20] = (self.molal[13] * self.molal[9] ** 3 *
@@ -430,17 +472,19 @@ class simulation:
 
             for i in range(1, self.ntot+1):
                 if i != 11:
-                    self.tot[i] *= self.ee
+                    self.tot[i] = self.tot[i] * self.ee
             for i in range(1, self.n+1):
                 if i != 11:
-                    self.molal[i] *= self.ee
+                    self.molal[i] = self.molal[i] * self.ee
 
         elif self.units == "molal":
             self.ee = 1
 
         self.stdi = s * self.ee
 
-        return
+
+
+
 
     def eql_actp(self):
         c = np.zeros(10)
@@ -814,22 +858,37 @@ class simulation:
         self.ndepact = 1
         
     def evp_actp(self):
-        self.cat = np.zeros(10)
-        self.ani = np.zeros(12)
-        self.h = np.zeros(4)
+        cat = np.zeros(10)
+        ani = np.zeros(12)
+        h = np.zeros(4)
 
-        self.cat[1] = self.mol[1]; self.cat[2] = self.mol[2]; self.cat[3] = self.mol[3]
-        self.cat[4] = self.mol[4]; self.cat[5] = self.mol[22]; self.cat[6] = self.mol[5]
-        self.cat[7] = self.mol[18]; self.cat[8] = self.mol[23]; self.cat[9] = self.mol[13]
-        self.ani[1] = self.mol[6]; self.ani[2] = self.mol[7]; self.ani[3] = self.mol[25]
-        self.ani[4] = self.mol[15]; self.ani[5] = self.mol[14]; self.ani[6] = self.mol[12]
-        self.ani[7] = self.mol[24]; self.ani[8] = self.mol[19]; self.ani[9] = self.mol[20]
-        self.ani[10] = self.mol[21]; self.ani[11] = self.mol[8]
-        self.h[1] = self.mol[10]; self.h[2] = self.mol[9]; self.h[3] = self.mol[0]
+        cat[1] = self.mol[1]
+        cat[2] = self.mol[2]
+        cat[3] = self.mol[3]
+        cat[4] = self.mol[4]
+        cat[5] = self.mol[22]
+        cat[6] = self.mol[5]
+        cat[7] = self.mol[18]
+        cat[8] = self.mol[23]
+        cat[9] = self.mol[13]
+        ani[1] = self.mol[6]
+        ani[2] = self.mol[7]
+        ani[3] = self.mol[25]
+        ani[4] = self.mol[15]
+        ani[5] = self.mol[14]
+        ani[6] = self.mol[12]
+        ani[7] = self.mol[24]
+        ani[8] = self.mol[19]
+        ani[9] = self.mol[20]
+        ani[10] = self.mol[21]
+        ani[11] = self.mol[8]
+        h[1] = self.mol[10]
+        h[2] = self.mol[9]
+        h[3] = self.mol[0]
         
-        self.cat[1:10] = self.cat[1:10] * self.mh2o / self.mol[11]
-        self.ani[1:12] = self.ani[1:12] * self.mh2o / self.mol[11]
-        self.h[1:4] = self.h[1:4] * self.mh2o / self.mol[11]
+        cat[1:10] = cat[1:10] * self.mh2o / self.mol[11]
+        ani[1:12] = ani[1:12] * self.mh2o / self.mol[11]
+        h[1:4] = h[1:4] *self.mh2o / self.mol[11]
 
         if self.ndepact == 0:
             text = read_file("coefft4")
@@ -960,10 +1019,10 @@ class simulation:
 
         u, z = 0, 0
 
-        u += np.sum(self.cat * self.nzc ** 2)
-        z += np.sum(self.cat * self.nzc)
-        u += np.sum(self.ani * self.nza ** 2)
-        z += np.sum(self.ani * self.nza)
+        u += np.sum(cat * self.nzc ** 2)
+        z += np.sum(cat * self.nzc)
+        u += np.sum(ani * self.nza ** 2)
+        z += np.sum(ani * self.nza)
 
         self.fi = u / 2
         fj = np.sqrt(self.fi)
@@ -1042,118 +1101,135 @@ class simulation:
 
         f = -self.ap0 * (fj / (1 + self.bp0 * fj) + 2 / self.bp0 * np.log(1 + self.bp0 * fj))
 
-        for i in range(1, self.nc+1):
-            for j in range(1, self.na+1):
-                f += self.cat[i] * self.ani[j] * bp[i, j]
+        i = np.repeat(np.arange(1, self.nc+1), self.na)
+        j = np.tile(np.arange(1, self.na+1), self.nc)
+        f += np.sum(cat[i] * ani[j] * bp[i, j])
 
         for i in range(1, self.nc):
             for j in range(i+1, self.nc+1):
-                f += self.cat[i] * self.cat[j] * pp[i, j]
+                f += cat[i] * cat[j] * pp[i, j]
 
         for i in range(1, self.na):
             for j in range(i+1, self.na+1):
-                f += self.ani[i] * self.ani[j] * qp[i, j]
+                f += ani[i] * ani[j] * qp[i, j]
 
         for ii in range(1, self.nc+1):
             u = self.nzc[ii] ** 2 * f
             for j in range(1, self.na+1):
-                u += self.ani[j] * (b[ii, j] * 2 + z * cc[ii, j])
+                u += ani[j] * (b[ii, j] * 2 + z * cc[ii, j])
             for i in range(1, self.nc+1):
                 if i != ii:
                     v = 0
                     for j in range(1, self.na+1):
-                        v += self.ani[j] * self.sc[ii, i, j]
-                    u += self.cat[i] * (p[ii, i] * 2 + v)
+                        v += ani[j] * self.sc[ii, i, j]
+                    u += cat[i] * (p[ii, i] * 2 + v)
             for i in range(1, self.na):
                 for j in range(i+1, self.na+1):
-                    u += self.ani[i] * self.ani[j] * self.sa[i, j, ii]
+                    u += ani[i] * ani[j] * self.sa[i, j, ii]
             for i in range(1, self.nc+1):
                 for j in range(1, self.na+1):
-                    u += self.cat[i] * self.ani[j] * cc[i, j] * self.nzc[ii]
+                    u += cat[i] * ani[j] * cc[i, j] * self.nzc[ii]
             for i in range(1, self.nn+1):
-                u += self.h[i] * self.lc[i, ii] * 2
+                u += h[i] * self.lc[i, ii] * 2
             for k in range(1, self.nn+1):
                 for j in range(1, self.na+1):
-                    u += self.h[k] * self.ani[j] * self.xi[k, ii, j]
+                    u += h[k] * ani[j] * self.xi[k, ii, j]
             gc[ii] = np.exp(u)
 
         for jj in range(1, self.na+1):
             u = self.nza[jj] ** 2 * f
             for i in range(1, self.nc+1):
-                u += self.cat[i] * ((b[i, jj]) * 2 + z * cc[i, jj])
+                u += cat[i] * ((b[i, jj]) * 2 + z * cc[i, jj])
             for i in range(1, self.na+1):
                 if i != jj:
                     v = 0
                     for j in range(1, self.nc+1):
-                        v += self.cat[j] * self.sa[jj, i, j]
-                    u += self.ani[i] * (q[jj, i] * 2 + v)
+                        v += cat[j] * self.sa[jj, i, j]
+                    u += ani[i] * (q[jj, i] * 2 + v)
 
             for i in range(1, self.nc):
                 for j in range(i+1, self.nc+1):
-                    u += self.cat[i] * self.cat[j] * self.sc[i, j, jj]
+                    u += cat[i] * cat[j] * self.sc[i, j, jj]
             for i in range(1, self.nc+1):
                 for j in range(1, self.na+1):
-                    u += self.cat[i] * self.ani[j] * cc[i, j] * self.nza[jj]
+                    u += cat[i] * ani[j] * cc[i, j] * self.nza[jj]
             for j in range(1, self.nn+1):
-                u += self.h[j] * self.la[j, jj]
+                u += h[j] * self.la[j, jj]
             for k in range(1, self.nn+1):
                 for i in range(1, self.nc+1):
-                    u += self.h[k] * self.cat[i] * self.xi[k, i, jj]
+                    u += h[k] * cat[i] * self.xi[k, i, jj]
             ga[jj] = np.exp(u)
 
         for k in range(1, self.nn+1):
             u = 0
             for i in range(1, self.nc+1):
-                u += self.cat[i] * self.lc[k, i] * 2
+                u += cat[i] * self.lc[k, i] * 2
             for j in range(1, self.na+1):
-                u += self.ani[j] * self.la[k, j] * 2
+                u += ani[j] * self.la[k, j] * 2
             for i in range(1, self.nc+1):
                 for j in range(1, self.na+1):
-                    u += self.cat[i] * self.ani[j] * self.xi[k, i, j]
+                    u += cat[i] * ani[j] * self.xi[k, i, j]
             gn[k] = np.exp(u)
 
         u = -self.ap0 * self.fi ** 1.5e0 / (1 + self.bp0 * fj)
         for i in range(1, self.nc+1):
             for j in range(1, self.na+1):
-                u += self.cat[i] * self.ani[j] * (bf[i, j] + z * cc[i, j])
+                u += cat[i] * ani[j] * (bf[i, j] + z * cc[i, j])
         for i in range(1, self.nc):
             for j in range(i+1, self.nc+1):
                 v = 0
                 for k in range(1, self.na+1):
-                    v += self.ani[k] * self.sc[i, j, k]
-                u += self.cat[i] * self.cat[j] * (pf[i, j] + v)
+                    v += ani[k] * self.sc[i, j, k]
+                u += cat[i] * cat[j] * (pf[i, j] + v)
         for i in range(1, self.na):
             for j in range(i+1, self.na+1):
                 v = 0
                 for k in range(1, self.nc+1):
-                    v += self.cat[k] * self.sa[i, j, k]
-                u += self.ani[i] * self.ani[j] * (qf[i, j] + v)
+                    v += cat[k] * self.sa[i, j, k]
+                u += ani[i] * ani[j] * (qf[i, j] + v)
         for k in range(1, self.nn+1):
             for i in range(1, self.nc+1):
-                u += self.h[k] * self.cat[i] * self.lc[k, i]
+                u += h[k] * cat[i] * self.lc[k, i]
         for k in range(1, self.nn+1):
             for j in range(1, self.na+1):
-                u += self.h[k] * self.ani[j] * self.la[k, j]
+                u += h[k] * ani[j] * self.la[k, j]
         for k in range(1, self.nn+1):
             for i in range(1, self.nc+1):
                 for j in range(1, self.na+1):
-                    u += self.h[k] * self.cat[i] * self.ani[j] * self.xi[k, i, j]
+                    u += h[k] * cat[i] * ani[j] * self.xi[k, i, j]
 
         s = 0
         for i in range(1, self.nc+1):
-            s += self.cat[i]
+            s += cat[i]
         for j in range(1, self.na+1):
-            s += self.ani[j]
-        co = 1 + 2 * u / s; self.aw = np.exp(-s * co / self.mh2o)
-        self.gact[0] = gn[3]; self.gact[1] = gc[1]; self.gact[2] = gc[2]
-        self.gact[3] = gc[3]; self.gact[4] = gc[4]; self.gact[22] = gc[5]
-        self.gact[5] = gc[6]; self.gact[18] = gc[7]; self.gact[23] = gc[8]
-        self.gact[13] = gc[9]; self.gact[6] = ga[1]; self.gact[7] = ga[2]
-        self.gact[25] = ga[3]; self.gact[15] = ga[4]; self.gact[14] = ga[5]
-        self.gact[12] = ga[6]; self.gact[24] = ga[7]; self.gact[19] = ga[8]
-        self.gact[20] = ga[9]; self.gact[21] = ga[10]; self.gact[8] = ga[11]
+            s += ani[j]
+        co = 1 + 2 * u / s
+        self.aw = np.exp(-s * co / self.mh2o)
+        self.gact[0] = gn[3]
+        self.gact[1] = gc[1]
+        self.gact[2] = gc[2]
+        self.gact[3] = gc[3]
+        self.gact[4] = gc[4]
+        self.gact[22] = gc[5]
+        self.gact[5] = gc[6]
+        self.gact[18] = gc[7]
+        self.gact[23] = gc[8]
+        self.gact[13] = gc[9]
+        self.gact[6] = ga[1]
+        self.gact[7] = ga[2]
+        self.gact[25] = ga[3]
+        self.gact[15] = ga[4]
+        self.gact[14] = ga[5]
+        self.gact[12] = ga[6]
+        self.gact[24] = ga[7]
+        self.gact[19] = ga[8]
+        self.gact[20] = ga[9]
+        self.gact[21] = ga[10]
+        self.gact[8] = ga[11]
         self.gact[10] = self.aw * self.aw * gn[1] ** np.log(10)
-        self.gact[9] = gn[2]; self.gact[16] = 1; self.gact[17] = 1
+        self.gact[9] = gn[2]
+        self.gact[16] = 1
+        self.gact[17] = 1
         self.gact[11] = self.aw / self.mh2o
         self.ndepact = 1
 
@@ -1196,12 +1272,15 @@ class simulation:
             self.dens += np.sum(au[i, j] * s[i, j] + bu[i, j] * s[i, j] ** 2)
 
     def iterate_activities(self, verbose=True):
-        while True:
-            nu = 1
-            ncompt = 0
-            while nu != 0:
+        iterate = True
+        while iterate:
+            self.nu = 1
+            self.ncompt = 0
+            while self.nu != 0:
                 self.eql_actp()
-                self.act[1:] = self.molal[1:] * self.gact[1:]
+
+                for i in range(1, self.n+1):
+                    self.act[i] = self.molal[i] * self.gact[i]
 
                 self.act[0] = self.aw
                 self.tot[11] = (10 ** (-self.ph)) / self.gact[11]
@@ -1256,8 +1335,8 @@ class simulation:
                             for j in range(k, ni+1):
                                 self.z[i, j] = self.z[k-1, j] - self.z[i, j] * u
                             self.zz[i] = self.zz[k-1] - self.zz[i] * u
-                
                 self.xx[ni] = self.zz[ni] / self.z[ni, ni]
+
                 for i in range(ni-1, 0, -1):
                     s = 0
                     for j in range(i+1, ni+1):
@@ -1271,15 +1350,15 @@ class simulation:
                         self.xx[k] = 0
                         ni += 1
 
-                ncompt += 1
+                self.ncompt += 1
                 if verbose:
-                    print("iteration molalities {}".format(ncompt))
+                    print("iteration molalities {}".format(self.ncompt))
 
-                if ncompt >= 100:
+                if self.ncompt >= 100:
                     for i in range(1, self.n+1):
                         if self.molal[i] + self.xx[i] / self.nconv < 0:
                             print("the equation set diverges: end of program")
-                            return
+                            return()
 
                 for i in range(1, self.n+1):
                     if self.molal[i] + self.xx[i] / self.nconv < 0:
@@ -1287,16 +1366,17 @@ class simulation:
                     else:
                         self.molal[i] += self.xx[i] / self.nconv
 
-                nu = 0
+                self.nu = 0
                 for i in range(1, self.n+1):
                     if self.ica[i] == 1:
                         if (200 * np.abs(self.xx[i] / self.nconv /
                                          (2 * self.molal[i] -
                                           self.xx[i] / self.nconv)) > self.pk):
-                            nu = 1
+                            self.nu = 1
 
-            
-            self.std = np.sum(self.molal * self.atom)
+            self.std = 0
+            for i in range(0, self.n+1):
+                self.std += self.molal[i] * self.atom[i]
 
             if verbose:
                 print("tdsi = {}".format(self.stdi))
@@ -1304,8 +1384,8 @@ class simulation:
 
             if (np.abs(self.std-self.stdi)/
                (self.std+self.stdi)*200 < self.pkstd):
-                
-                break
+                iterate = False
+                continue
 
             else:
                 if self.units == "molar":
@@ -1358,6 +1438,7 @@ class simulation:
 
                 self.calculate_pCO2(verbose=verbose)
 
+        # if pk is greater than pkf,
         if self.pk > self.pkf:
             self.pk = self.pkf
 
@@ -1543,7 +1624,7 @@ class simulation:
         self.nwm = 0
         self.nwmp = 0
 
-        #self.pai = np.zeros(self.nm+1)
+        self.pai = np.zeros(self.nm+1)
         data_lst = []
 
         for k in range(1, self.nm+1):
@@ -1583,7 +1664,7 @@ class simulation:
             print()
 
     def saturation_state(self, verbose):
-        #self.kinvar = np.zeros(self.nt+1)
+        self.kinvar = np.zeros(self.nt+1)
 
         for k in range(1, self.nm+1):
             self.lmin[k] = 0
@@ -1763,28 +1844,32 @@ class simulation:
 
     def invar(self):
         self.kinvariant = 0
-        ncm = 14; nbmin = 10
+        ncm = 14
+        nbmin = 10
         ninvar = nbmin + 3
-
-        kinv = np.zeros(ninvar+1, np.int64)
+        kinv = np.zeros(ninvar+1)
         minv_S = np.empty(ninvar+1, dtype=object)
-        psminv = np.zeros(ninvar+1, np.float64)
-        winv = np.zeros((ninvar+1, ncm+1), np.float64)
+        psminv = np.zeros(ninvar+1)
+        winv = np.zeros((ninvar+1, ncm+1))
         minvar_S = np.empty(ninvar+1, dtype=object)
-        psminvar = np.zeros(ninvar+1, np.float64)
-        t0 = np.zeros((ninvar+1, ninvar+1), np.float64)
-        t1 = np.zeros((ninvar+1, ninvar+1), np.float64)
-        t2 = np.zeros((ninvar+1, ninvar+1), np.float64)
-        t3 = np.zeros((ninvar+1, ncm+1), np.float64)
-        t4 = np.zeros((ncm+1, ncm+1), np.float64)
-        tt4 = np.zeros(ncm+1, np.float64)
-        
+        psminvar = np.zeros(ninvar+1)
+        t0 = np.zeros((ninvar+1, ninvar+1))
+        t1 = np.zeros((ninvar+1, ninvar+1))
+        t2 = np.zeros((ninvar+1, ninvar+1))
+        t3 = np.zeros((ninvar+1, ncm+1))
+        t4 = np.zeros((ncm+1, ncm+1))
+        tt4 = np.zeros(ncm+1)
         for k in range(1, 4):
             psminv[k] = np.log10(self.psc[k])
-        winv[1, 11] = 1; winv[1, 13] = 1; winv[1, 0] = -1
-        winv[2, 11] = 1; winv[2, 12] = -1; winv[2, 14] = 1
-        winv[3, 11] = 1; winv[3, 12] = 1; winv[3, 0] = -1
-
+        winv[1, 11] = 1
+        winv[1, 13] = 1
+        winv[1, 0] = -1
+        winv[2, 11] = 1
+        winv[2, 12] = -1
+        winv[2, 14] = 1
+        winv[3, 11] = 1
+        winv[3, 12] = 1
+        winv[3, 0] = -1
         n1 = 3
         for k in range(1, self.nm+1):
             if self.lmin[k] == 1:
@@ -1794,10 +1879,8 @@ class simulation:
                 psminv[n1] = np.log10(self.psol[k])
                 for j in range(0, ncm+1):
                     winv[n1, j] = self.wmin[k, j]
-
         for i in range(1, n1+1):
             winv[i, 0], winv[i, 14] = winv[i, 14], winv[i, 0]
-
         for i in range(1, n1+1):
             for j in range(i, n1+1):
                 t1[i, j] = 0
@@ -1832,7 +1915,6 @@ class simulation:
                             if j != kk:
                                 jj += 1
                                 t2[ii, jj] = t0[i, j]
-
                 for k in range(2, n2+1):
                     for i in range(k, n2+1):
                         if np.abs(t2[i, k-1]) > self.epsilon:
@@ -1841,7 +1923,6 @@ class simulation:
                                 t2[i, j] = t2[k-1, j] - t2[i, j] * u
                                 if np.abs(t2[i, j]) < self.epsilon:
                                     t2[i, j] = 0
-
                 det1 = 1
                 for i in range(1, n2+1):
                     if np.abs(t2[i, i]) < self.epsilon:
@@ -1876,7 +1957,7 @@ class simulation:
                 for i in range(1, n4+1):
                     tt4[i] = 0
                     for k in range(1, n3+1):
-                        tt4[i] += t3[k, i] * psminvar[k]
+                        tt4[i] = tt4[i] + t3[k, i] * psminvar[k]
                 for k in range(2, n4+1):
                     for i in range(k, n4+1):
                         if np.abs(t4[i, k-1]) > self.epsilon:
@@ -1899,7 +1980,6 @@ class simulation:
                                 self.kinvariant -= 1
                 elif np.abs(t4[n4, n4]) <= self.epsilon:
                     self.kinvariant = -2
-        return
 
     def temperature(self, at, bt, ct, dt, et):
         return((at + bt * self.temp + ct * self.temp ** 2 +
@@ -1940,18 +2020,20 @@ class simulation:
         
         self.initialize_evp(verbose, output)
         
-        self.status = 500
-        
+        self.main_loop(verbose, output)
+            
+    def main_loop(self, verbose, output):
         while True:
-            if self.status == 500:
-                self.loop_500(verbose, output)
-            if self.status == 2000:
-                self.loop_2000(verbose, output)
-            if self.status == 3:
+            status = self.loop_500(verbose, output)
+            if status == 500:
+                continue
+            if status == 2000:
+                status = self.loop_2000(verbose, output)
+            if status == 3:
                 self.stop_simulation()
                 if output:
                     self.compact()
-                return
+                return(3)
 
 
     def initialize_evp(self, verbose, output):
@@ -1973,29 +2055,31 @@ class simulation:
         self.kinvariant = 0
         self.ninv = 0
         self.xinv  = 0
+        self.nminer0 = None
         
         self.my_S = ""
         self.my0_S = ""
         
         # Initialize blank arrays
-        self.totinit = np.zeros(self.ntot+1, np.float64)
-        self.tot0 = np.zeros(self.ntot+1, np.float64)
-        self.totest = np.zeros(self.ntot+1, np.float64)
-        self.psc = np.zeros(self.ncomplex+1, np.float64)
+        self.totinit = np.zeros(self.ntot+1)
+        self.tot0 = np.zeros(self.ntot+1)
+        self.totest = np.zeros(self.ntot+1)
+        self.psc = np.zeros(self.ncomplex+1)
 
         # Initialize blank arrays
-        self.nch = np.zeros(self.n+1, np.int64)
-        self.mol = np.zeros(self.n+1, np.float64)
-        self.mol0 = np.zeros(self.n+1, np.float64)
-        self.mol1 = np.zeros(self.n+1, np.float64)
-        self.molal0 = np.zeros(self.n+1, np.float64)
-        self.act = np.zeros(self.n+1, np.float64)
-        self.act0 = np.zeros(self.n+1, np.float64)
-        self.gact0 = np.zeros(self.n+1, np.float64)
-        self.gact1 = np.zeros(self.n+1, np.float64)
+        self.nch = np.zeros(self.n+1, dtype=int)
+        self.mol = np.zeros(self.n+1)
+        self.mol0 = np.zeros(self.n+1)
+        self.mol1 = np.zeros(self.n+1)
+        self.molal0 = np.zeros(self.n+1)
+        self.act = np.zeros(self.n+1)
+        self.act0 = np.zeros(self.n+1)
+        self.gact = np.zeros(self.n+1)
+        self.gact0 = np.zeros(self.n+1)
+        self.gact1 = np.zeros(self.n+1)
         self.aq_S = np.empty(self.n+1, object)
-        self.atom = np.zeros(self.n+1, np.float64)
-        self.kmat = np.zeros((self.n+1, self.n+1), np.int64)
+        self.atom = np.zeros(self.n+1)
+        self.kmat = np.zeros((self.n+1, self.n+1))
 
         # Read aquv database
         aquv = read_file("aquv.dat")
@@ -2008,6 +2092,13 @@ class simulation:
 
         # transfer output from EQL into input for EVP
         self.totinit[1:11] = self.tot[1:11]
+        self.tot *= 0
+        
+        self.nbmin = np.count_nonzero(self.totinit != 0)
+        
+        self.ica = np.zeros(self.n+self.nbmin+1, dtype=int)
+        self.kinvar = np.zeros(self.nbmin+4, dtype=int)
+        
         self.mol[0] = self.molal[15]
         self.mol[1:11] = self.molal[1:11]
         self.mol[11] = self.mh2o
@@ -2016,16 +2107,9 @@ class simulation:
         self.mol[14] = self.molal[14]
         self.mol[15] = self.molal[12]
         self.mol[16:26] = self.molal[16:26]
+        
         self.mol0[:] = self.mol[:]
-
-        # Allocate blank arrays ica and kinvar
-        self.nbmin = np.count_nonzero(self.totinit != 0)
-        self.ica = np.zeros(self.n+self.nbmin+1, np.int64)
-        self.kinvar = np.zeros(self.nbmin+4, np.int64)
-
-        # Reallocate tot and molal arrays to clear EQL data
-        self.tot = np.zeros(self.ntot+1, np.float64)
-        self.molal = np.zeros(self.n+1, np.float64)
+        self.molal *= 0
 
         # Set the increment mode (automatic or manual)
         if self.increment == 0:
@@ -2064,8 +2148,9 @@ class simulation:
                 file.write("\n")
             file.close()
 
+        # BELOW THIS LINE IS OLD CODE FROM EQL METHOD. MAKE SURE TO UPDATE
         # Read thermodynamic data for dissociation coefficients from complex3
-        complex3 = np.zeros((self.ncomplex+1, 5), np.float64)
+        complex3 = np.zeros((self.ncomplex+1, 5))
         complex3[1:,:] = [i[1:] for i in read_file("complex3")]
         self.psc[1:] = 10 ** (complex3[1:,0] +
                               complex3[1:,1] / 300 * self.temp +
@@ -2073,7 +2158,8 @@ class simulation:
                               complex3[1:,3] / 3000000 * self.temp ** 3 +
                               complex3[1:,4] / 300000000 * self.temp ** 4)
         self.psc3 = self.psc[3]
-        self.psc[3] *= self.psc[14] * 10 ** self.po
+        self.psc[3] = self.psc[3] * self.psc[14] * 10 ** self.po
+
 
         # Read eql mineral database from murtf2/murtf0
         murtf = read_file(self.min_S)
@@ -2081,25 +2167,25 @@ class simulation:
         (self.nc, self.na, self.nm) = (int(i) for i in murtf[0])
         self.ncm = self.nc + self.na + 1
 
-        self.wmin = np.zeros((self.nm+1, self.ncm+1), np.float64)
-        self.mu = np.zeros(self.ncm+1, np.float64)
-        self.linvar = np.zeros(self.nm+1, np.int64)
+        self.wmin = np.zeros((self.nm+1, self.ncm+1))
+        self.mu = np.zeros(self.ncm+1)
+        self.linvar = np.zeros(self.nm+1, dtype=int)
 
         self.mineral_S = np.empty(self.nm+1, object)
-        self.mum = np.zeros(self.nm+1, np.float64)
-        self.psol = np.zeros(self.nm+1, np.float64)
-        self.psol0 = np.zeros(self.nm+1, np.float64)
-        self.pai = np.zeros(self.nm+1, np.float64)
-        self.pai0 = np.zeros(self.nm+1, np.float64)
+        self.mum = np.zeros(self.nm+1)
+        self.psol = np.zeros(self.nm+1)
+        self.psol0 = np.zeros(self.nm+1)
+        self.pai = np.zeros(self.nm+1)
+        self.pai0 = np.zeros(self.nm+1)
 
-        self.lmin = np.zeros(self.nm+1, np.int64)
-        self.lmin0 = np.zeros(self.nm+1, np.int64)
-        self.lmin1 = np.zeros(self.nm+1, np.int64)
+        self.lmin = np.zeros(self.nm+1, dtype=int)
+        self.lmin0 = np.zeros(self.nm+1, dtype=int)
+        self.lmin1 = np.zeros(self.nm+1, dtype=int)
 
-        self.min = np.zeros(self.nm+1, np.float64)
-        self.min0 = np.zeros(self.nm+1, np.float64)
-        self.minp = np.zeros(self.nm+1, np.float64)
-        self.minp0 = np.zeros(self.nm+1, np.float64)
+        self.min = np.zeros(self.nm+1)
+        self.min0 = np.zeros(self.nm+1)
+        self.minp = np.zeros(self.nm+1)
+        self.minp0 = np.zeros(self.nm+1)
 
         ion_list = murtf[1:self.ncm+1]
         ion_list.insert(0, None)
@@ -2206,17 +2292,17 @@ class simulation:
         for k in range(1, self.nm+1):
             self.pai[k] = 1
             for i in range(1, self.ncm+1):
-                self.pai[k] *= self.act[i] ** self.wmin[k, i]
+                self.pai[k] = self.pai[k] * self.act[i] ** self.wmin[k, i]
             if self.pai[k] >= self.psol[k]:
                 self.lmin[k] = 1
-        
-        with open(self.event_file, "a") as file:
-            for k in range(1, self.nm+1):
-                if self.lmin[k] == 1:
-                    file.write("Initial solution "\
-                               "oversaturated in {}".format(self.mineral_S[k]))
-                    file.write("\n")
-            file.close()
+        if output:
+            with open(self.event_file, "a") as file:
+                for k in range(1, self.nm+1):
+                    if self.lmin[k] == 1:
+                        file.write("Initial solution "\
+                                   "oversaturated in {}".format(self.mineral_S[k]))
+                        file.write("\n")
+                file.close()
     
         for k in range(1, self.nm+1):
             if self.lmin[k] == 1:
@@ -2240,21 +2326,20 @@ class simulation:
                     elif self.psol[k] * 0.95 <= self.psol0[k]:
                         self.psol[k] = self.psol0[k]
         
-        nw = 1
-        while nw != 0:
+        self.nw = 1
+        while self.nw != 0:
             
             self.ncmpt += 1
             self.m0_S = "_".join(self.mineral_S[self.lmin == 1])
             
-            self.gact1[:] = self.gact[:]
-
+            self.gact1 = self.gact
             self.evp_actp()
             
             if self.kinvariant == 0:
-                self.gact[:] = ((self.gact[:] + self.gact1[:] * ix) / iy)
+                self.gact = ((self.gact + self.gact1 * ix) / iy)
             
-            self.molal[:] = self.mol[:] * self.mh2o / self.mol[11]
-            self.act[:] = self.molal[:] * self.gact[:]
+            self.molal = self.mol * self.mh2o / self.mol[11]
+            self.act = self.molal * self.gact
             
             for k in range(1, self.nm+1):
                 self.pai[k] = 1
@@ -2292,7 +2377,7 @@ class simulation:
                         print(self.ncmpt, self.mineraux_S)
 
             if ((self.mwev > 0) and (self.fc != 1) and
-                (self.nminer - self.nminer0 >= 2)):
+                ((self.nminer - self.nminer0 if self.nminer0 else 0) >= 2)):
                 
                 self.increment = self.increment / 2
                 
@@ -2301,20 +2386,22 @@ class simulation:
                         print()
                         print("Program unstable")
                         print("Restart the initialization "\
-                            "program (EQL...)")
+                              "program (EQL...)")
                         print("and lower the limits of convergence")
                     
                     if output:
                         with open(self.event_file, 'a') as file:
                             file.write("Program unstable\n")
                             file.write("Restart the initialization "\
-                                    "program (EQL...)\n")
+                                       "program (EQL...)\n")
                             file.write("and lower the limits "\
-                                    "of convergence\n")
+                                       "of convergence\n")
                             file.close()
-
-                    self.status = 3
-                    return
+                
+                        self.compact()
+                
+                    self.stop_simulation()
+                    return(3)
                     
                 if verbose:
                     print("reduction at increment {}".format(self.increment))
@@ -2330,9 +2417,8 @@ class simulation:
                 self.mwev += self.mol[11] * self.increment
                 self.tot[11] -= 2 * self.mol[11] * self.increment
                 
-                # exit the loop, start the loop over
-                self.status = 500
-                return
+                # exit the loop with status 500, i.e. start the loop over
+                return(500)
             
             if (self.nminer > 1) and (self.mineraux_S != self.m0_S):
                 ix, iy = 2, 3
@@ -2346,15 +2432,14 @@ class simulation:
                                 (self.min[self.kinvar[i]] == 0)):
                                     
                                 self.kneuf = self.kinvar[i]
-                        # exit the loop with status 2000; minimize free energy
-                        self.status = 2000
-                        return
+                        # exit the loop with return status 2000; minimize free energy
+                        return(2000)
                 
                     elif self.system == "c":
-                        self.mol[:] = self.mol0[:]
-                        self.molal[:] = self.molal0[:]
-                        self.gact[:] = self.gact0[:]
-                        self.act[:] = self.act0[:]
+                        self.mol = self.mol0
+                        self.molal = self.molal0
+                        self.gact = self.gact0
+                        self.act = self.act0
                     
                         self.tot[1:] = self.tot0[1:]
                         self.pai[1:] = self.pai0[1:]
@@ -2364,32 +2449,32 @@ class simulation:
                         self.nminer = self.nminer0
                         self.fi = self.fi0
                         
-            self.mol1[:] = self.mol[:]
+            self.mol1 = self.mol
             
             if self.kinvariant == 0:
-                self.reseq(verbose, output)
-                if self.status == 3:
-                    return # end simulation
+                status = self.reseq(verbose, output)
+                if status == 3:
+                    return(3) # end simulation
                 
             elif self.kinvariant > 0:
-                self.reseqinv()
-                if self.status == 3:
-                    return # end simulation
+                status = self.reseqinv()
+                if status == 3:
+                    return(3) # end simulation
                 self.mwev += self.xinv/2
                 self.tot[11] -= self.xinv
             
             self.mol[0] = (self.mol[15] * self.gact[15] * self.mol[13] *
-                        self.gact[13] / self.mol[11] / self.gact[11] /
-                        self.psc3 / self.gact[0])
+                           self.gact[13] / self.mol[11] / self.gact[11] /
+                           self.psc3 / self.gact[0])
         
-            nw = 0
+            self.nw = 0
             
             for i in range(1, self.n+1):
                 if self.mol[i] > 0:
                     if (200 * np.abs(self.mol[i] - self.mol1[i]) /
                         (self.mol[i] + self.mol1[i]) > self.pkmol):
                         
-                        nw = 1
+                        self.nw = 1
                         
             ki = self.kinvariant
             
@@ -2402,11 +2487,11 @@ class simulation:
                         self.mwev += self.mol[11] * self.increment
                         self.tot[11] -= 2 * self.mol[11] * self.increment
                         ki = 0
-                        nw = 1
+                        self.nw = 1
                         
             self.kinvariant = ki
             
-            if nw == 1:
+            if self.nw == 1:
                 self.mol[:] = (self.mol[:] + self.mol1[:]) / 2
             
             if self.ncmpt == 500:
@@ -2416,19 +2501,18 @@ class simulation:
                     print("Restart the initialization program (EQL...)")
                     print("and lower the limits of convergence.")
                     print("Set the increment in manual mode at a lower "\
-                        "value than .5")
+                          "value than .5")
                 if output:
                     with open(self.event_file, 'a') as file:
                         file.write("Program unstable\n")
                         file.write("Restart the initialization "\
-                                "program (EQL...)\n")
+                                   "program (EQL...)\n")
                         file.write("and lower the limits of "\
-                                "convergence.\n")
+                                   "convergence.\n")
                         file.write("Set the increment in manual mode "\
-                                "at a lower value than .5\n")
+                                   "at a lower value than .5\n")
                         file.close()
-                self.status = 3
-                return # end simulation
+                return(3) # end simulation
             
         for k in range(1, self.nm+1):
             if self.psol[k] == 1e+50 and self.linvar[k] == 0:
@@ -2451,8 +2535,8 @@ class simulation:
             for j in range(1, self.ncm+1):
                 for k in range(1, self.nm+1):
                     self.tot[11] -= (self.wmin[k, j] *
-                                    self.kmat[11, j] *
-                                    self.min[k])
+                                     self.kmat[11, j] *
+                                     self.min[k])
             
         for i in range(1, self.ntot):
             self.totest[i] = 0
@@ -2495,9 +2579,9 @@ class simulation:
                     self.molal[14] * 2 + self.molal[15] +
                     (self.molal[16] + self.molal[17]) * 2)
         self.alc += (self.molal[18] + self.molal[19] +
-                    self.molal[20] + self.molal[21] * 2)
+                     self.molal[20] + self.molal[21] * 2)
         self.alc += (self.molal[22] + self.molal[23] +
-                    self.molal[24] - self.molal[25])
+                     self.molal[24] - self.molal[25])
         
         self.std = (np.sum(self.molal[1:] * self.atom[1:]) -
                     self.molal[11] * self.atom[11])
@@ -2514,8 +2598,8 @@ class simulation:
                 self.co3 += self.wmin[k, 14] * self.minp[k]
         
         self.ctot = (self.mol[0] + self.mol[14] + self.mol[15] +
-                    self.mol[16] + self.mol[17] +
-                    self.hco3 + self.co3)
+                     self.mol[16] + self.mol[17] +
+                     self.hco3 + self.co3)
         
         self.my_S = "_".join(self.mineral_S[(self.lmin == 1) |
                                             (self.min != 0)])
@@ -2534,7 +2618,7 @@ class simulation:
                     if self.lmin[i] == 1 or self.min[i] != 0:
                         
                         u = (200 * np.abs(self.pai[i] - self.psol[i]) / 
-                            (self.pai[i] + self.psol[i]))
+                             (self.pai[i] + self.psol[i]))
                         
                         if self.system == "c":
                             if self.min[i] > self.min0[i]:
@@ -2557,17 +2641,17 @@ class simulation:
                             
                 if self.system == "c":
                     db1 = pd.DataFrame(data={" ": min_name,
-                                            "MOLES PREC": moles_prec,
-                                            "TESTS": u})
+                                             "MOLES PREC": moles_prec,
+                                             "TESTS": u})
                 else:
                     db1 = pd.DataFrame(data={" ": min_name,
-                                            "MOLES 1 STEP": moles_1,
-                                            "MOLES TOT": moles_tot,
-                                            "TESTS": tests})
+                                             "MOLES 1 STEP": moles_1,
+                                             "MOLES TOT": moles_tot,
+                                             "TESTS": tests})
                     
                 if verbose:
                     with pd.option_context('display.max_rows', None,
-                                        'display.max_columns', None):
+                                           'display.max_columns', None):
                         print(db1.to_string(index=False))
                     print()
                     
@@ -2576,7 +2660,7 @@ class simulation:
                     with open(self.log_file, 'a') as file:
                         file.write("\n")
                         with pd.option_context('display.max_rows', None,
-                                        'display.max_columns', None):
+                                           'display.max_columns', None):
                             file.write(db1.to_string(index=False))
                         file.write("\n")
                         file.close()
@@ -2600,7 +2684,7 @@ class simulation:
             for i in range(1, self.ntot+1):
                 if self.tot[i] > 0 or i == 12:
                     u = (200 * np.abs(self.totest[i] - self.totinit[i]) / 
-                        (self.totest[i] + self.totinit[i]))
+                         (self.totest[i] + self.totinit[i]))
                     
                     species.append(self.aq_S[i])
                     moles.append(self.mol[i])
@@ -2622,7 +2706,7 @@ class simulation:
                     for j in range(1, self.n+1):
                         p = p * self.act[j] ** self.kmat[i, j]
                     u = (200 * np.abs(p - self.psc[i-12]) / 
-                        (p + self.psc[i-12]))
+                         (p + self.psc[i-12]))
                     species.append(self.aq_S[i])
                     moles.append(self.mol[i])
                     molalities.append(self.molal[i])
@@ -2642,15 +2726,15 @@ class simulation:
             molal_tot.append(np.nan)
             
             db2 = pd.DataFrame(data={" ": species,
-                                    "MOLES": moles,
-                                    "MOLALITIES": molalities,
-                                    "ACT COEFF": act_coef,
-                                    "MOLAL TOT": molal_tot,
-                                    "TESTS": tests})
+                                     "MOLES": moles,
+                                     "MOLALITIES": molalities,
+                                     "ACT COEFF": act_coef,
+                                     "MOLAL TOT": molal_tot,
+                                     "TESTS": tests})
             
             if verbose:
                     with pd.option_context('display.max_rows', None,
-                                        'display.max_columns', None):
+                                           'display.max_columns', None):
                         print(db2.to_string(index=False, na_rep=""))
                     print()
                     
@@ -2659,7 +2743,7 @@ class simulation:
                 with open(self.log_file, 'a') as file:
                     file.write("\n")
                     with pd.option_context('display.max_rows', None,
-                                    'display.max_columns', None):
+                                       'display.max_columns', None):
                         file.write(db2.to_string(index=False, na_rep=""))
                     file.write("\n")
                     file.close()
@@ -2712,15 +2796,15 @@ class simulation:
                             lines.append("end of dissolution and start of precipitation of {} at fc = {}".format(self.mineral_S[k], self.fc))
                     
                     elif (self.lmin[k] == 0 and 
-                        self.lmin1[k] == 1 and 
-                        self.lmin0[k] == 1):
+                          self.lmin1[k] == 1 and 
+                          self.lmin0[k] == 1):
                         
                         self.lmin1[k] = 0
                         lines.append("end of dissolution and of saturation of {} at fc = {}".format(self.mineral_S[k], self.fc))
                     
                     elif (self.lmin[k] == 0 and
-                        self.lmin1[k] == 0 and 
-                        self.lmin0[k] == 1):
+                          self.lmin1[k] == 0 and 
+                          self.lmin0[k] == 1):
                         
                         self.lmin1[k] = 0
                         lines.append("end of saturation of {} at fc = {}".format(self.mineral_S[k], self.fc))
@@ -2792,13 +2876,15 @@ class simulation:
                 
                 
         if self.stdmax > 0 and self.std * self.ee >= self.stdmax:
-            self.status = 3
-            return
+            if output:
+                self.compact()
+            self.stop_simulation()
+            return(3)
         
         if (self.mwev > 0 and 
             self.kinvariant == 0 and 
             (np.abs(self.act[11] - self.act0[11]) / 
-            (self.act[11] + self.act0[11])) < .0000000001):
+             (self.act[11] + self.act0[11])) < .0000000001):
             
             if self.system == "c":
                 nu = 0
@@ -2852,12 +2938,14 @@ class simulation:
                     file.close()
                     
             if "end" in self.q_S:
-                self.status = 3
-                return
+                if output:
+                    self.compact()
+                self.stop_simulation()
+                return(3)
             
         elif (self.kinvariant == 0 and
-            (np.abs(self.act[11] - self.act0[11]) / 
-            (self.act[11] + self.act0[11])) > .0000000001):
+              (np.abs(self.act[11] - self.act0[11]) / 
+               (self.act[11] + self.act0[11])) > .0000000001):
             
             self.nperitec = 0
             self.q_S = ""
@@ -2873,10 +2961,10 @@ class simulation:
         if self.my_S != self.my0_S:
             self.my0_S = self.my_S
             
-        self.mol0[:] = self.mol[:]
-        self.molal0[:] = self.molal[:]
-        self.gact0[:] = self.gact[:]
-        self.act0[:] = self.act[:]
+        self.mol0 = self.mol
+        self.molal0 = self.molal
+        self.gact0 = self.gact
+        self.act0 = self.act
         
         self.tot0[1:] = self.tot[1:]
         
@@ -2891,15 +2979,14 @@ class simulation:
         
         if self.kinvariant == 0 and self.initdeseq == 0:
             if self.inc_S == "auto":
-                self.increment = (51 - 8 * np.log(self.std * 1000)/np.log(10)) / 700
+                self.increment = (51 - 8 * np.log10(self.std * 1000)) / 700
                 self.inc0 = self.increment
             elif self.inc_S == "manu":
                 self.increment = self.inc0
             self.mwev += self.mol[11] * self.increment
             self.tot[11] -= 2 * self.mol[11] * self.increment
-        
-        self.status = 500
-        return
+    
+        return(500)
     
     def loop_2000(self, verbose, output):
         
@@ -2944,15 +3031,15 @@ class simulation:
                               "".format(self.mineral_S[self.kinvar[ii]]))
                     
                     self.ncmptinv = 0
-                    nw = 1
-                    while nw != 0:
+                    self.nw = 1
+                    while self.nw != 0:
                         self.ncmptiv += 1
                         
-                        self.gact0[:] = self.gact[:]
+                        self.gact0 = self.gact
                         self.evp_actp()
-                        self.gact[:] = (self.gact0[:] + self.gact[:]) / 2
-                        self.molal[:] = self.mol * self.mh2o / self.mol[11]
-                        self.act[:] = self.molal * self.gact
+                        self.gact = (self.gact0 + self.gact) / 2
+                        self.molal = self.mol * self.mh2o / self.mol[11]
+                        self.act = self.molal * self.gact
                         
                         for k in range(1, self.nm+1):
                             self.pai[k] = 1
@@ -2984,10 +3071,10 @@ class simulation:
                         
                         self.molal = self.mol * self.mh2o / self.mol[11]
                         
-                        nw = 0
+                        self.nw = 0
                         for i in range(0, self.n+1):
                             if np.abs(self.mol1[i] - self.mol[i]) > self.pkmol:
-                                nw = 1
+                                self.nw = 1
                     
                     g = 0
                     for i in range(0, self.ncm+1):
@@ -3033,8 +3120,7 @@ class simulation:
             print("mineral definitely removed: {}"\
                   "".format(self.mineral_S[self.ksupprim]))
         
-        self.status = 500
-        return
+        return(0)
     
     def compact(self):
         df = pd.read_csv(self.min_file)
@@ -3054,8 +3140,8 @@ class simulation:
         ncm = 15
         nt = self.n
         
-        nu = 1
-        while nu != 0:
+        self.nu = 1
+        while self.nu != 0:
             for i in range(1, nt+1):
                 for j in range(1, nt+1):
                     z[i, j] = 0
@@ -3186,14 +3272,14 @@ class simulation:
                     xx[k] = 0
                     ni += 1
             
-            nu = 1
-            while nu != 0:
+            self.nu = 1
+            while self.nu != 0:
                 for i in range(1, self.n+1):
                     if self.ica[i] == 1:
-                        nu = 0
+                        self.nu = 0
                         if self.mol[i] + xx[i] / nconv < 0:
                             nconv += 1
-                            nu = 1
+                            self.nu = 1
                             break
                 if nconv >= self.max_conv:
                     if verbose:
@@ -3206,8 +3292,7 @@ class simulation:
                             file.write("The equation system diverges: "\
                                        "end of simulation\n")
                             file.close()
-                    self.status = 3
-                    return
+                    return(3)
                 
             for i in range(1, self.n+1):
                 self.mol[i] += xx[i] / nconv
@@ -3216,13 +3301,16 @@ class simulation:
                 if self.lmin[k] == 1:
                     i += 1
                     self.min[k] += xx[i] / nconv
-            nu = 0
+            self.nu = 0
             for i in range(1, nt+1):
                 if self.ica[i] == 1:
                     if np.abs(xx[i]) > self.pkeq:
-                        nu = 1
+                        self.nu = 1
+        
         return
 
+                
+    
     def reseqinv(self):
         
         nt = self.ntot-1
@@ -3234,7 +3322,7 @@ class simulation:
         xx = np.zeros((nt+1))
         
         if self.ninv == 0:
-            hmin = 1000
+            self.hmin = 1000
             for k in range(1, self.nm+1):
                 for kk in range(1, self.kinvariant+1):
                     if k == self.kinvar[kk] and self.min[k] > 0:
@@ -3242,13 +3330,11 @@ class simulation:
                         for i in range(1, 16):
                             s += self.wmin[k, i] * self.kmat[nt, i]
                         if s > 0:
-                            if s * self.min[k] < hmin:
-                                hmin = s * self.min[k]
-            self.xinv = hmin / 100
+                            if s * self.min[k] < self.hmin:
+                                self.hmin = s * self.min[k]
+            self.xinv = self.hmin / 100
             if self.xinv <= 0:
-                self.status = 3
-                return
-
+                return(3)
         self.ninv = 1
         j = 0
         for k in range(1, self.nm+1):
@@ -3256,13 +3342,13 @@ class simulation:
                 for kk in range(1, self.kinvariant+1):
                     if k == self.kinvar[kk]:
                         j += 1
-                        for i in range(1, nt):
+                        for i in range(1, self.nt):
                             t0[i, j] = self.wmin[k, i]
                         s = 0
                         for i in range(1, 16):
                             s += self.wmin[k, i] * self.kmat[nt, i]
                         t0[nt, j] = s
-        nmin = j
+        self.nmin = j
         
         for i in range(1, nt):
             tt[i] = 0
@@ -3279,29 +3365,29 @@ class simulation:
                                     self.kmat[11, i])
         tt0[nt] -= self.xinv
         
-        for i in range(1, nmin+1):
-            for j in range(i, nmin+1):
+        for i in range(1, self.nmin+1):
+            for j in range(i, self.nmin+1):
                 t[i, j] = 0
                 for k in range(1, nt+1):
                     t[i, j] += t0[k, i] * t0[k, j]
                     t[j, i] = t[i, j]
-        for i in range(1, nmin+1):
+        for i in range(1, self.nmin+1):
             tt[i] = 0
             for k in range(1, nt+1):
                 tt[i] += t0[k, i] * tt0[k]
         
-        for k in range(2, nmin+1):
-            for i in range(k, nmin+1):
+        for k in range(2, self.nmin+1):
+            for i in range(k, self.nmin+1):
                 if np.abs(t[i, k-1]) > self.epsilon:
                     u = t[k-1, k-1] / t[i, k-1]
-                    for j in range(k, nmin+1):
+                    for j in range(k, self.nmin+1):
                         t[i, j] = t[k-1, j] - t[i, j] * u
                     tt[i] = tt[k-1] - tt[i] * u
         
-        xx[nmin] = tt[nmin] / t[nmin, nmin]
-        for i in range(nmin-1, 0, -1):
+        xx[self.nmin] = tt[self.nmin] / t[self.nmin, self.nmin]
+        for i in range(self.nmin-1, 0, -1):
             s = 0
-            for j in range(i+1, nmin+1):
+            for j in range(i+1, self.nmin+1):
                 s += t[i, j] * xx[j]
             xx[i] = (tt[i] - s) / t[i, i]
             if np.abs(xx[i]) < self.epsilon:
