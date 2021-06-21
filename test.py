@@ -16,14 +16,14 @@ if __name__ == "__main__":
     
     t1 = perf_counter()
     
-    pco2_ppm = 1600
+    pco2_ppm = 1000
     log_pco2 = np.log10(pco2_ppm / 1e6)
     
     temp = 30
 
     system = "c"
     
-    evp = True
+    evp = False
 
 
     test = eqlevp.simulation(label='test', temp=temp, dens=1, ph=6.55, na=84.5, 
@@ -34,7 +34,7 @@ if __name__ == "__main__":
                  rem_minerals=['dolomite', 'nesquehonite', 'brucite',
                                'magnesite', 'hydromagnesite', 'antarcticite',
                                'aragonite', 'burkeite', 'glaserite'],
-                 verbose=True, call_evp=evp, increment=50)
+                 verbose=True, call_evp=evp)
 
     t2 = perf_counter()
     
