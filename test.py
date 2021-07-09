@@ -30,11 +30,11 @@ if __name__ == "__main__":
                              k=3.3, li=0, ca=2.7, mg=1.3, cl=39.5, so4=0, 
                              alk=56.2, no3=0, si=0, b=0)
     
-    test.run_eql(log_pco2, system, units="molar", add_minerals=['calcite'],
-                 rem_minerals=['dolomite', 'nesquehonite', 'brucite',
-                               'magnesite', 'hydromagnesite', 'antarcticite',
-                               'aragonite', 'burkeite', 'glaserite'],
-                 verbose=True, call_evp=evp)
+    # test.run_eql(log_pco2, system, units="molar", add_minerals=['calcite'],
+    #              rem_minerals=['dolomite', 'nesquehonite', 'brucite',
+    #                            'magnesite', 'hydromagnesite', 'antarcticite',
+    #                            'aragonite', 'burkeite', 'glaserite'],
+    #              verbose=False, call_evp=evp)
 
     t2 = perf_counter()
     

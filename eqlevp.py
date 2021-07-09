@@ -1331,7 +1331,7 @@ class simulation:
             self.ani[5] = self.molal[14] + self.molal[16] + self.molal[17]
             self.nchani[4] = -self.nch[12]
             self.nchani[5] = -self.nch[14]
-
+            
             self.density()
 
     def iterate_pco2(self, verbose):

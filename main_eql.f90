@@ -1582,7 +1582,7 @@ SUBROUTINE actp (molal, gact, aw, fi, temp)
       		bp(i, j) = b1(i, j) * (g1(v)) / fi + b2(i, j) * (g1(w)) / fi
     	ENDDO
   	ENDDO
-  	f = -ap0 * (fj / (1 + bp0 * fj) + 2. / bp0 * LOG(1 + bp0 * fj))
+  	f = -ap0 * (fj / (1 + bp0 * fj) + 2. / sbp0 * LOG(1 + bp0 * fj))
   	DO i = 1 , nc; DO j = 1 , na; f = f + c(i) * a(j) * bp(i, j); ENDDO; ENDDO
   	DO i = 1 , nc - 1; DO j = i + 1 , nc; f = f + c(i) * c(j) * pp(i, j); ENDDO; ENDDO
   	DO i = 1 , na - 1; DO j = i + 1 , na; f = f + a(i) * a(j) * qp(i, j); ENDDO; ENDDO
