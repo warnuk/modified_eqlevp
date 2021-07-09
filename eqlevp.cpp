@@ -59,12 +59,10 @@ const double pkstd = 0.1;
 
 
 class Simulation {
-
     public:
 
     // declare arrays and vectors
     array<string,max_constit> constit_S; array<string,n+1> aq_S;
-    
     double tot[ntot+1] = {0}; double tot0[ntot+1] = {0}; 
     double totinit[ntot+1] = {0}; double molal[n+1] = {0}; 
     double act[n+1] = {0}; double gact[n+1] = {0}; 
@@ -74,7 +72,6 @@ class Simulation {
     double cat[max_cat] = {0}; double ani[max_an] = {0};
     int nchcat[max_cat+1] = {0}; int nchani[max_an] = {0};
     int kmat[n+1][n+1] = {0}; int ica[n+1] = {0};
-
 
     // declare variables
     int i, j, k, l, ii, nminer, nm, nt, nc, na, ncomp, icat, iani, nconstit;
@@ -114,33 +111,23 @@ class Simulation {
 
     Simulation(string fname) {
         run_eql(fname);
-
-        // check that variables are set
-        //cout << tot[1] << endl;
-
-        // destruct allocated arrays
-        deconstruct();
-        
     }
 
     private:
 
         void run_eql(string fname) {
-            // initialization routine
             // read user inputs
             read_inputs(fname);
 
             if (verbose == 1) {
                 time_t now;
                 time (&now);
-
                 cout << "\nThis is EQL..............\n";
                 cout << asctime(localtime(&now)) << "\n";
             }
             
             // files
-            tra_file = label + ".tra";
-            log_file = label + ".log";
+            tra_file = label + ".tra"; log_file = label + ".log";
             event_file = label + ".j" + system + "@";
             chem_file = label + ".j" + system + "&";
             min_file = label + ".j" + system + "%";
@@ -166,21 +153,14 @@ class Simulation {
             file.open("aqu.dat");
             for (int i = 0; i <= n; i++) {
                 getline(file, line);
-                stringstream linestream(line);
-                string value;
-
-                getline(linestream, value, ',');
-                aq_S[i] = value;
-
-                getline(linestream, value, ',');
-                atom[i] = stod(value);
-
-                getline(linestream, value, ',');
-                nch[i] = stoi(value);
+                stringstream linestream(line); string value;
+                getline(linestream, value, ','); aq_S[i] = value;
+                getline(linestream, value, ','); atom[i] = stod(value);
+                getline(linestream, value, ','); nch[i] = stoi(value);
             }
             file.close();
 
-            // Turn ICA on
+            // Set default ica to 1
             for (int i=1; i<=n; i++) {
                 ica[i] = 1;
             }
@@ -189,11 +169,9 @@ class Simulation {
             file.open("matrice1");
             for (int i=1; i<=n; i++) {
                 getline(file, line);
-                stringstream linestream(line);
-                string value;
+                stringstream linestream(line); string value;
                 for (int j=1; j<=n; j++) {
-                    getline(linestream, value, ',');
-                    kmat[i][j] = stoi(value);
+                    getline(linestream, value, ','); kmat[i][j] = stoi(value);
                 }
             }
             file.close();
@@ -203,27 +181,17 @@ class Simulation {
             file.open("complex3");
             for (int i=1; i<=14; i++) {
                 getline(file, line);
-                stringstream linestream(line);
-                string value;
+                stringstream linestream(line); string value;
                 double at, bt, ct, dt, et;
                 
                 getline(linestream, value, ',');
-                getline(linestream, value, ',');
-                at = stod(value);
-                getline(linestream, value, ',');
-                bt = stod(value);
-                getline(linestream, value, ',');
-                ct = stod(value);
-                getline(linestream, value, ',');
-                dt = stod(value);
-                getline(linestream, value, ',');
-                et = stod(value);
+                getline(linestream, value, ','); at = stod(value);
+                getline(linestream, value, ','); bt = stod(value);
+                getline(linestream, value, ','); ct = stod(value);
+                getline(linestream, value, ','); dt = stod(value);
+                getline(linestream, value, ','); et = stod(value);
 
-                psc[i] = pow(10, (at +
-                                  bt/300*temp +
-                                  ct/30000*pow(temp, 2) +
-                                  dt/3000000*pow(temp,3) +
-                                  et/300000000*pow(temp,4)));
+                psc[i] = pow(10, (at + bt/300*temp + ct/30000*pow(temp, 2) + dt/3000000*pow(temp,3) + et/300000000*pow(temp,4)));
             }
             file.close();
 
@@ -231,14 +199,10 @@ class Simulation {
                 // Open and read murtf2
                 file.open("murtf2");
                 getline(file, line);
-                stringstream linestream(line);
-                string value;
-                getline(linestream, value, ',');
-                nc = stoi(value);
-                getline(linestream, value, ',');
-                na = stoi(value);
-                getline(linestream, value, ',');
-                nm = stoi(value);
+                stringstream linestream(line); string value;
+                getline(linestream, value, ','); nc = stoi(value);
+                getline(linestream, value, ','); na = stoi(value);
+                getline(linestream, value, ','); nm = stoi(value);
                 nt = nc + na;
                 file.close();
             }
@@ -246,8 +210,7 @@ class Simulation {
             // Initialize arrays of zeros + empty string arrays
             for (int i=0; i<=nt; i++) nom_ion_S.push_back("");
             for (int i=0; i<=nm; i++) {
-                mineral_S.push_back("");
-                mineral0_S.push_back("");
+                mineral_S.push_back(""); mineral0_S.push_back("");
             }
             for (int i=0; i<=nm; i++) {
                     vector<double> temp;
@@ -255,16 +218,11 @@ class Simulation {
                     wmin.push_back(temp);
             }
             for (int i=0; i<=nt; i++) {
-                c_ion.push_back(0);
-                mu.push_back(0);
-                kinvar.push_back(0);
+                c_ion.push_back(0); mu.push_back(0); kinvar.push_back(0);
             }
             for (int i=0; i<=nm; i++) {
-                mum.push_back(0);
-                psol.push_back(0);
-                pai.push_back(0);
-                lmin.push_back(0);
-                nwmin.push_back(0);
+                mum.push_back(0); psol.push_back(0); pai.push_back(0);
+                lmin.push_back(0); nwmin.push_back(0);
             }
 
             {
@@ -277,54 +235,35 @@ class Simulation {
                 // Iterate through the chemical species
                 for (int i=0; i<=14; i++) {
                     getline(file, line);
-                    stringstream linestream(line);
-                    string value, x_S;
+                    stringstream linestream(line); string value, x_S;
                     double at, bt, ct, dt, et;
                     
-                    getline(linestream, value, ',');
-                    x_S = upper_to_lower(value);
-                    getline(linestream, value, ',');
-                    at = stod(value);
-                    getline(linestream, value, ',');
-                    bt = stod(value);
-                    getline(linestream, value, ',');
-                    ct = stod(value);
-                    getline(linestream, value, ',');
-                    dt = stod(value);
-                    getline(linestream, value, ',');
-                    et = stod(value);
+                    getline(linestream, value, ','); x_S = upper_to_lower(value);
+                    getline(linestream, value, ','); at = stod(value);
+                    getline(linestream, value, ','); bt = stod(value);
+                    getline(linestream, value, ','); ct = stod(value);
+                    getline(linestream, value, ','); dt = stod(value);
+                    getline(linestream, value, ','); et = stod(value);
             
                     for (int j=0; j<=nt; j++) {
-            
                         if (x_S == aq_S[j]) {
-            
-                            mu[j] = (at + 
-                                    bt / 300 * temp + 
-                                    ct / 30000 * pow(temp, 2) +
-                                    dt / 3000000 * pow(temp, 3) + 
-                                    et / 300000000 * pow(temp, 4));
+                            mu[j] = (at + bt / 300 * temp + ct / 30000 * pow(temp, 2) + dt / 3000000 * pow(temp, 3) + et / 300000000 * pow(temp, 4));
                         }
                     }
                 }
 
                 for (int k=1; k<=nm; k++) {
                     getline(file, line);
-                    stringstream linestream(line);
-                    string value, x_S;
+                    stringstream linestream(line); string value, x_S;
                     double at, bt, ct, dt, et;
-                    int ncomp;
-                    double c_ion;
+                    int ncomp; double c_ion;
             
-                    getline(linestream, value, ',');
-                    mineral_S.at(k) = value;
-                    getline(linestream, value, ',');
-                    ncomp = stoi(value);
+                    getline(linestream, value, ','); mineral_S.at(k) = value;
+                    getline(linestream, value, ','); ncomp = stoi(value);
             
                     for (int i=1; i<=ncomp; i++) {
-                        getline(linestream, value, ',');
-                        c_ion = stod(value);
-                        getline(linestream, value, ',');
-                        nom_ion_S[i] = value;
+                        getline(linestream, value, ','); c_ion = stod(value);
+                        getline(linestream, value, ','); nom_ion_S[i] = value;
                         x_S = upper_to_lower(nom_ion_S.at(i));
 
                         for (int j=0; j<=nt; j++) {
@@ -334,22 +273,13 @@ class Simulation {
                         }
                     }
 
-                    getline(linestream, value, ',');
-                    at = stod(value);
-                    getline(linestream, value, ',');
-                    bt = stod(value);
-                    getline(linestream, value, ',');
-                    ct = stod(value);
-                    getline(linestream, value, ',');
-                    dt = stod(value);
-                    getline(linestream, value, ',');
-                    et = stod(value);
+                    getline(linestream, value, ','); at = stod(value);
+                    getline(linestream, value, ','); bt = stod(value);
+                    getline(linestream, value, ','); ct = stod(value);
+                    getline(linestream, value, ','); dt = stod(value);
+                    getline(linestream, value, ','); et = stod(value);
 
-                    mum[k] = (at +
-                            bt / 300 * temp +
-                            ct / 30000 * pow(temp, 2) +
-                            dt / 3000000 * pow(temp, 3) + 
-                            et / 300000000 * pow(temp, 4));
+                    mum[k] = (at + bt / 300 * temp + ct / 30000 * pow(temp, 2) + dt / 3000000 * pow(temp, 3) +  et / 300000000 * pow(temp, 4));
                 } 
                 file.close();
             }
@@ -398,14 +328,10 @@ class Simulation {
             {
                 file.open("murtf3");
                 getline(file, line);
-                stringstream linestream(line);
-                string value;
-                getline(linestream, value, ',');
-                nc = stoi(value);
-                getline(linestream, value, ',');
-                na = stoi(value);
-                getline(linestream, value, ',');
-                nm0 = stoi(value);
+                stringstream linestream(line); string value;
+                getline(linestream, value, ','); nc = stoi(value);
+                getline(linestream, value, ','); na = stoi(value);
+                getline(linestream, value, ','); nm0 = stoi(value);
 
                 for (int i=1; i<=(nc+na+1); i++) {
                     getline(file, line);
@@ -413,10 +339,8 @@ class Simulation {
 
                 for (int k=1; k<=nm; k++) {
                     getline(file, line);
-                    stringstream linestream(line);
-                    string value;
-                    getline(linestream, value, ',');
-                    mineral0_S.at(k) = value;
+                    stringstream linestream(line); string value;
+                    getline(linestream, value, ','); mineral0_S.at(k) = value;
                 }
                 for (int k=1; k<=nm; k++) {
                     nwmin[k] = 0;
@@ -1239,7 +1163,7 @@ class Simulation {
                     outfile << output << endl;
                     outfile << print_step << endl;
                     outfile << verbose << endl;
-                    outfile << units << endl;
+                    outfile << output_units << endl;
                     outfile << chem_file << endl;
                     outfile << event_file << endl;
                     outfile << min_file << endl;
@@ -1334,7 +1258,7 @@ class Simulation {
                     system = value;
                 } else if (name == "units") {
                     getline(linestream, value, ',');
-                    units = value;
+                    output_units = value;
                 } else if (name == "dil") {
                     getline(linestream, value, ',');
                     dil = stod(value);
@@ -1908,7 +1832,49 @@ class Simulation {
         }
 
         void eql_density() {
+            int nc, na;
 
+            nc = 5; na = 5;
+
+            double s[nc+1][na+1] = {0};
+            double ao[nc+1][na+1] = {0}; double bo[nc+1][na+1] = {0};
+            double au[nc+1][na+1] = {0}; double bu[nc+1][na+1] = {0};
+
+            file.open("densite");
+            for (int i=1; i<=5; i++) {
+                for (int j=1; j<=5; j++) {
+                    getline(file, line);
+                    stringstream linestream(line);
+                    string value;
+
+                    getline(linestream, value, ','); x_S = value;
+                    getline(linestream, value, ','); ao[i][j] = stod(value);
+                    getline(linestream, value, ','); bo[i][j] = stod(value);
+                    getline(linestream, value, ','); au[i][j] = stod(value);
+                    getline(linestream, value, ','); bu[i][j] = stod(value);
+                }
+            }
+            file.close();
+
+            if (units == "molar") {
+                dens = 1; u = 0;
+                for (int j=1; j<=na; j++) u += ani[j];
+                for (int i=1; i<=nc; i++) {
+                    for (int j=1; j<=na; j++) {
+                        s[i][j] = (nchcat[i] + nchani[j]) / 2 * cat[i] * ani[j] / nchcat[i] / nchani[j] / u;
+                        dens += ao[i][j] * s[i][j] + bo[i][j] * pow(s[i][j], 2);
+                    }
+                }
+            } else if (units == "molal") {
+                dens = 1; u = 0;
+                for (int j=1; j<=na; j++) u += ani[j] * nchani[j];
+                for (int i=1; i<=nc; i++) {
+                    for (int j=1; j<=na; j++) {
+                        s[i][j] = (nchcat[i] + nchani[j]) / 2 * cat[i] * ani[j] / u;
+                        dens += au[i][j] * s[i][j] + bu[i][j] * pow(s[i][j], 2);
+                    }
+                }
+            }
         }
 
         void eql_invar() {
