@@ -9,7 +9,6 @@
 #include <sstream>
 #include <cmath>
 #include <stdio.h>
-#include <new>
 
 using namespace std;
 
@@ -88,14 +87,13 @@ class Simulation {
     double a, b, c, u, sc, cmax, sa, amax, dca, delta, xu, eq, s, ee, stdi, aw, fi, std, ef, tinit, stdmax;
     double po, po0, poinit, phinit, ph0, pc, poa, alcar, albor, alsil, aloh, alh, altest, d, v, xi, eps;
 
-    string label, log_file, event_file, chem_file, min_file;
-    string pco2, max_salinity;
+    string label, tra_file, log_file, event_file, chem_file, min_file;
+    string pco2; double max_sal;
     string system; string output_units, units;
-    double dilute;
-    string add_minerals, rem_minerals;
     vector<string> add_min; vector<string> rem_min;
     int print_step, output_step, verbose, output;
     ifstream file; 
+    ofstream outfile;
     string line;
 
     int nconv = 2; int ndepact = 0; string pco2_S = "";
@@ -141,6 +139,7 @@ class Simulation {
             }
             
             // files
+            tra_file = label + ".tra";
             log_file = label + ".log";
             event_file = label + ".j" + system + "@";
             chem_file = label + ".j" + system + "&";
@@ -549,7 +548,7 @@ class Simulation {
                 }
                 stdi = s * ee;
                 
-                LOOP200:
+            LOOP200:
                 while (true) {
                     nu = 1;
                     ncompt = 0;
@@ -915,54 +914,53 @@ class Simulation {
                 if (output == 1) {
                     if (verbose == 1) cout << "LOG FILE IS " << log_file << endl;
 
-                    ofstream file;
-                    file.open(log_file, ios::trunc);
-                    file << left << setw(15) << " " << left << setw(20) << "MOLALITY" << left << setw(20) << "ACT. COEFF." << left << setw(20) << "ACTIVITY" << endl;
-                    file << endl;
+                    outfile.open(log_file, ios::trunc);
+                    outfile << left << setw(15) << " " << left << setw(20) << "MOLALITY" << left << setw(20) << "ACT. COEFF." << left << setw(20) << "ACTIVITY" << endl;
+                    outfile << endl;
 
                     for (int i=1; i<=n; i++) {
                         if (molal[i] != 0) {
-                            file << left << setw(15) << aq_S[i] << left << setw(20) << molal[i] << left << setw(20) << gact[i] << left << setw(20) << act[i] << endl;
+                            outfile << left << setw(15) << aq_S[i] << left << setw(20) << molal[i] << left << setw(20) << gact[i] << left << setw(20) << act[i] << endl;
                         }
                     }
 
-                    file << endl;
+                    outfile << endl;
 
-                    file << "ELECTRICAL BALANCE     = " << dca << "% corrected on " << aq_S[icat] << " and " << aq_S[iani] << endl;
-                    file << "TOTAL DISSOLVED SOLITS = " << std << "g/kg(H2O)" << endl;
-                    file << "MOLAL/MOLAR FACTOR     = " << (1000 * dens / (1000 + std)) << endl;
-                    file << "DENSITY                = " << dens << endl;
-                    file << "IONIC STRENGTH         = " << fi << endl;
-                    file << "WATER ACTIVITY         = " << aw << endl;
+                    outfile << "ELECTRICAL BALANCE     = " << dca << "% corrected on " << aq_S[icat] << " and " << aq_S[iani] << endl;
+                    outfile << "TOTAL DISSOLVED SOLITS = " << std << "g/kg(H2O)" << endl;
+                    outfile << "MOLAL/MOLAR FACTOR     = " << (1000 * dens / (1000 + std)) << endl;
+                    outfile << "DENSITY                = " << dens << endl;
+                    outfile << "IONIC STRENGTH         = " << fi << endl;
+                    outfile << "WATER ACTIVITY         = " << aw << endl;
                     if (diltot > 1) {
-                        file << "DILUTION               = " << diltot << endl;
+                        outfile << "DILUTION               = " << diltot << endl;
                     }
                     if (pco2_S == "" or pco2_S == "n") {
-                        file << "pH                     = " << ph << endl;
-                        file << "LOG PCO2               = " << po << endl;
+                        outfile << "pH                     = " << ph << endl;
+                        outfile << "LOG PCO2               = " << po << endl;
                     } else if (pco2_S == "y") {
-                        file << "INITIAL LOG PCO2       = " << poinit << endl;
-                        file << "INITIAL pH             = " << phinit << endl;
-                        file << "CALCULATED LOG PCO2    = " << po << endl;
-                        file << "CALCULATED pH          = " << ph << endl;
+                        outfile << "INITIAL LOG PCO2       = " << poinit << endl;
+                        outfile << "INITIAL pH             = " << phinit << endl;
+                        outfile << "CALCULATED LOG PCO2    = " << po << endl;
+                        outfile << "CALCULATED pH          = " << ph << endl;
                     }
-                    file << "CARBONATE ALKALINITY   = " << alcar << endl;
-                    file << "BORATE ALKALINITY      = " << albor << endl;
-                    file << "SILICATE ALKALINITY    = " << alsil << endl;
-                    file << "OH ALKALINITY          = " << aloh << endl;
-                    file << "H ALKALINITY           = " << alh << endl;
-                    file << "TOTAL ALKALINITY       = " << setw(25) << altest << "init. alk. = " << tot[12] << endl;
+                    outfile << "CARBONATE ALKALINITY   = " << alcar << endl;
+                    outfile << "BORATE ALKALINITY      = " << albor << endl;
+                    outfile << "SILICATE ALKALINITY    = " << alsil << endl;
+                    outfile << "OH ALKALINITY          = " << aloh << endl;
+                    outfile << "H ALKALINITY           = " << alh << endl;
+                    outfile << "TOTAL ALKALINITY       = " << setw(25) << altest << "init. alk. = " << tot[12] << endl;
 
-                    file << endl;
-                    file << setw(18) << " " << setw(18) << "SOLUB. PROD." << setw(18) << "ION. ACT. PROD." << setw(18) << "SATUR. RATIO" << endl;
-                    file << endl;
+                    outfile << endl;
+                    outfile << setw(18) << " " << setw(18) << "SOLUB. PROD." << setw(18) << "ION. ACT. PROD." << setw(18) << "SATUR. RATIO" << endl;
+                    outfile << endl;
                     for (int k=1; k<=nm; k++) {
                         if (pai[k] > 0) {
-                            file << setw(18) << mineral_S[k] << setw(18) << psol[k] << setw(18) << pai[k] << setw(18) << pai[k] / psol[k] << endl;
+                            outfile << setw(18) << mineral_S[k] << setw(18) << psol[k] << setw(18) << pai[k] << setw(18) << pai[k] / psol[k] << endl;
                         }
                     
                     }
-                    file.close();
+                    outfile.close();
                 }
                 // LINE 767
 
@@ -1075,14 +1073,14 @@ class Simulation {
                 if (verbose == 1) {
                     cout << endl;
                     cout << "Dilute the solution:" << endl;
-                    cout << "  dilution = 1/" << dilute << endl;
+                    cout << "  dilution = 1/" << dil << endl;
                 }
 
-                if (dilute > 1) {
-                    diltot = diltot * dilute;
+                if (dil > 1) {
+                    diltot = diltot * dil;
                     pco2_S = ""; pk = pk0; dph = 0.2;
                     for (int i=1; i<=12; i++) {
-                        if (i != 11) tot[i] = tot[i] / dilute;
+                        if (i != 11) tot[i] = tot[i] / dil;
                     }
                     for (int i=1; i<=5; i++) {
                         cat[i] = tot[i];
@@ -1092,13 +1090,13 @@ class Simulation {
                         ani[j] = tot[j+5];
                         nchani[j] = -nch[j+5];
                     }
-                    ani[4] = molal[12] / dilute;
-                    ani[5] = (molal[14] + molal[17] + molal[17]) / dilute;
+                    ani[4] = molal[12] / dil;
+                    ani[5] = (molal[14] + molal[17] + molal[17]) / dil;
                     nchani[4] = -nch[12];
                     nchani[5] = -nch[14];
                     unit_S = "molal";
                     eql_density();
-                    dilute = 1;
+                    dil = 1;
                     goto LOOP500;
                 }
 
@@ -1110,12 +1108,152 @@ class Simulation {
                 if (verbose == 1) cout << endl;
 
                 // LINE 879
+                // Modify database
+                nmneuf = 0;
 
-                
+                if (add_min.size() > 0 or rem_min.size() > 0) {
+                    // add_mineral
+                    for (int i=0; i<add_min.size(); i++) {
+                        string m_S = add_min[i];
+                        for (int k=1; k<=nm; k++) {
+                            if (mineral_S[k] == m_S) {
+                                if (nwmin[k] == 0) {
+                                    nmneuf += 1;
+                                    nwmin[k] = 1;
+                                }
+                                if (verbose == 1) {
+                                    cout << add_min[i] << " added" << endl;
+                                }
+                                break;
+                            } else if (k == nm and mineral_S[k] != m_S) {
+                                if (verbose == 1) {
+                                    cout << add_min[i] << " not found" << endl;
+                                }
+                            }
+                        }
+                    }
+
+                    for (int i=0; i<rem_min.size(); i++) {
+                        string m_S = rem_min[i];
+                        for (int k=1; k<=nm; k++) {
+                            if (mineral_S[k] == m_S) {
+                                if (nwmin[k] == 1) {
+                                    nmneuf -= 1;
+                                    nwmin[k] = 0;
+                                }
+                                if (verbose == 1) {
+                                    cout << rem_min[i] << " removed" << endl;
+                                }
+                                break;
+                            } else if (k == nm and mineral_S[k] != m_S) {
+                                if (verbose == 1) {
+                                    cout << rem_min[i] << " not found" << endl;
+                                }
+                            }
+                        }
+                    }
+
+                    // Create murtf0 and transfer data LINE 955
+                    // clear add_min and rem_min
+                    ifstream murtf2;
+                    ofstream murtf0;
+                    murtf2.open("murtf2");
+                    murtf0.open("murtf0", ios::trunc);
+                    {
+                        getline(murtf2, line); 
+                        string value; stringstream linestream(line);
+
+                        getline(linestream, value); nc = stoi(value);
+                        getline(linestream, value); na = stoi(value);
+
+                        murtf0 << nc << "," << na << "," << nm0+nmneuf << endl;
+                    }
+
+                    for (int i=1; i<=nc+na+1; i++) {
+                        getline(murtf2, line);
+                        murtf0 << line << endl;
+                    }
+
+                    for (int k=1; k<=nm; k++) {
+                        if (nwmin[k] == 1) {
+                            getline(murtf2, line);
+                            murtf0 << line << endl;
+                        } else if (nwmin[k] == 0) {
+                            getline(murtf2, line);
+                        }
+                    }
+                    murtf2.close();
+                    murtf0.close();
+
+                    min_S = "murtf0";
+
+                    add_min.clear();
+                    rem_min.clear();
+                    goto LOOP400;
+                }
+
+                // Transfer file
+                {
+                    constituant_S = "label,fc,eva,ds,ph,alk";
+                    for (int i=1; i<=8; i++) {
+                        if (tot[i] > 0) {
+                            zone_S = upper_to_lower(aq_S[i]);
+                            constituant_S += "," + zone_S;
+                        }
+                    }
+                    if (tot[9] != 0) constituant_S += ",b";
+                    if (tot[10] != 0) constituant_S += ",si";
+                    constituant_S += ",tds";
+                    
+                    outfile.open("stockage", ios::trunc);
+                    outfile << tra_file;
+                    outfile.close();
+
+                    outfile.open(tra_file, ios::trunc);
+                    outfile << temp << endl;
+                    outfile << tinit << endl;
+                    outfile << ph << endl;
+                    outfile << phinit << endl;
+                    outfile << po << endl;
+                    outfile << poinit << endl;
+                    outfile << diltot << endl;
+                    outfile << constituant_S << endl;
+                    for (int i=1; i<=10; i++) {
+                        outfile << tot[i] << endl;
+                    }
+                    outfile << molal[15] << endl;
+                    for (int i=1; i<=10; i++) {
+                        outfile << molal[i] << endl;
+                    }
+                    outfile << mh2o << endl;
+                    outfile << molal[13] << endl;
+                    outfile << molal[11] << endl;
+                    outfile << molal[14] << endl;
+                    outfile << molal[12] << endl;
+                    for (int i=16; i<=25; i++) {
+                        outfile << molal[i] << endl;
+                    }
+                    outfile << system << endl;
+                    outfile << xi << endl;
+                    outfile << output_step << endl;
+                    outfile << output << endl;
+                    outfile << print_step << endl;
+                    outfile << verbose << endl;
+                    outfile << units << endl;
+                    outfile << chem_file << endl;
+                    outfile << event_file << endl;
+                    outfile << min_file << endl;
+                    outfile << min_S << endl;
+                    outfile << max_sal << endl;
+                    outfile << pkmol << endl;
+                    outfile << pkeq << endl;
+
+                    outfile.close();
+                }
 
 
             STOP: 
-            cout << "done" << endl;
+                cout << "done" << endl;
         }
 
 
@@ -1123,53 +1261,128 @@ class Simulation {
             // Declare temporary input chemistry variables
             double na, k, li, ca, mg, cl, so4, no3, b, si, alk;
 
+            // Set default values to 0
+            na = 0; k = 0; li = 0; ca = 0; mg = 0; cl = 0; 
+            so4 = 0; no3 = 0; b = 0; si = 0; alk = 0;
+
+            // Set default parameters
+            label = ""; temp = 25; dens = 1.0;; ph = 7; pco2 = ""; max_sal = 0;
+            pkmol = 0.001; pkeq = 0.0000000000001; dil = 1.0; xi = 0;
+            print_step = 1; output_step = 1; verbose = 1; output = 1;
+
             // Open the input file into the file stream
             file.open(fname);
 
-                // Read the input data into simulation attributes
-                file >> label; file >> temp; file >> dens; 
-                file >> ph; file >> na; file >> k;
-                file >> li; file >> ca; file >> mg;
-                file >> cl; file >> so4; file >> no3;
-                file >> b; file >> si; file >> alk;
-                file >> pco2; file >> system; 
-                file >> output_units; file >> dilute; 
+            while (file.good()) {
+                getline(file, line);
+                string name, value;
+                stringstream linestream(line);
                 
-                // Parse minerals to be added to database
-                {
-                    file >> x_S; 
-                    stringstream linestream(x_S);
+
+                getline(linestream, name, ',');
+
+                if (name == "label") {
+                    getline(linestream, value, ',');
+                    label = value;
+                } else if (name == "temp") {
+                    getline(linestream, value, ',');
+                    temp = stod(value);
+                } else if (name == "dens") {
+                    getline(linestream, value, ',');
+                    dens = stod(value);
+                } else if (name == "ph") {
+                    getline(linestream, value, ',');
+                    ph = stod(value);
+                } else if (name == "na") {
+                    getline(linestream, value, ',');
+                    na = stod(value);
+                } else if (name == "k") {
+                    getline(linestream, value, ',');
+                    k = stod(value);
+                } else if (name == "li") {
+                    getline(linestream, value, ',');
+                    li = stod(value);
+                } else if (name == "ca") {
+                    getline(linestream, value, ',');
+                    ca = stod(value);
+                } else if (name == "mg") {
+                    getline(linestream, value, ',');
+                    mg = stod(value);
+                } else if (name == "cl") {
+                    getline(linestream, value, ',');
+                    cl = stod(value);
+                } else if (name == "so4") {
+                    getline(linestream, value, ',');
+                    so4 = stod(value);
+                } else if (name == "no3") {
+                    getline(linestream, value, ',');
+                    no3 = stod(value);
+                } else if (name == "b") {
+                    getline(linestream, value, ',');
+                    b = stod(value);
+                } else if (name == "si") {
+                    getline(linestream, value, ',');
+                    si = stod(value);
+                } else if (name == "alk") {
+                    getline(linestream, value, ',');
+                    alk = stod(value);
+                } else if (name == "pco2") {
+                    getline(linestream, value, ',');
+                    pco2 = value;
+                } else if (name == "system") {
+                    getline(linestream, value, ',');
+                    system = value;
+                } else if (name == "units") {
+                    getline(linestream, value, ',');
+                    units = value;
+                } else if (name == "dil") {
+                    getline(linestream, value, ',');
+                    dil = stod(value);
+                } else if (name == "add") {
                     while (linestream.good()) {
                         string substr;
                         getline(linestream, substr, ',');
                         add_min.push_back(lower_to_upper(substr));
                     }     
-                }
-                
-                // Parse minerals to be removed from database
-                {
-                    file >> x_S; 
-                    stringstream linestream(x_S);
+                } else if (name == "remove") {
                     while (linestream.good()) {
                         string substr;
                         getline(linestream, substr, ',');
                         rem_min.push_back(lower_to_upper(substr));
-                    }     
+                    } 
+                } else if (name == "max_sal") {
+                    getline(linestream, value, ',');
+                    max_sal = stod(value);
+                } else if (name == "pkmol") {
+                    getline(linestream, value, ',');
+                    pkmol = stod(value);
+                } else if (name == "pkeq") {
+                    getline(linestream, value, ',');
+                        pkeq = stod(value);
+                } else if (name == "print_step") {
+                    getline(linestream, value, ',');
+                    print_step = stoi(value);
+                } else if (name == "output_step") {
+                    getline(linestream, value, ',');
+                    output_step = stoi(value);
+                } else if (name == "verbose") {
+                    getline(linestream, value, ',');
+                    verbose = stoi(value);
+                } else if (name == "output") {
+                    getline(linestream, value, ',');
+                    output = stoi(value);
+                } else if (name == "increment") {
+                    getline(linestream, value, ',');
+                    xi = stod(value) / 100;
                 }
-                
-                file >> max_salinity;
-                file >> pkmol; file >> pkeq;
-                file >> print_step; file >> output_step;
-                file >> verbose; file >> output;
-
-                // Convert input chemistry from mmoles to moles, pH to [H+]
-                tot[1] = na / 1000; tot[2] = k / 1000; tot[3] = li / 1000;
-                tot[4] = ca / 1000; tot[5] = mg / 1000; tot[6] = cl / 1000;
-                tot[7] = so4 / 1000; tot[8] = no3 / 1000; tot[9] = b / 1000;
-                tot[10] = si / 1000; tot[11] = pow(10, -ph); tot[12] = alk / 1000;
-
-            // Close the input file stream
+            }
             file.close();
+
+            // Convert input chemistry from mmoles to moles, pH to [H+]
+            tot[1] = na / 1000; tot[2] = k / 1000; tot[3] = li / 1000;
+            tot[4] = ca / 1000; tot[5] = mg / 1000; tot[6] = cl / 1000;
+            tot[7] = so4 / 1000; tot[8] = no3 / 1000; tot[9] = b / 1000;
+            tot[10] = si / 1000; tot[11] = pow(10, -ph); tot[12] = alk / 1000;
         }
 
         void eql_actp() {
@@ -1192,12 +1405,9 @@ class Simulation {
             getline(file, line);
             stringstream linestream(line);
             string value;
-            getline(linestream, value, ',');
-            nc = stoi(value);
-            getline(linestream, value, ',');
-            na = stoi(value);
-            getline(linestream, value, ',');
-            nn = stoi(value);
+            getline(linestream, value, ','); nc = stoi(value);
+            getline(linestream, value, ','); na = stoi(value);
+            getline(linestream, value, ','); nn = stoi(value);
             
 
             if (ndepact == 0) {
@@ -1206,30 +1416,25 @@ class Simulation {
                 for (int i=0; i<=na; i++) nza.push_back(0);
                 for (int i=0; i<=nc; i++) {
                     vector<double> temp;
-                    for (int k=0; k<=na; k++) temp.push_back(0);
-                    b0.push_back(temp);
+                    for (int k=0; k<=na; k++) temp.push_back(0); b0.push_back(temp);
                 }
                 for (int i=0; i<=nc; i++) {
                     vector<double> temp;
-                    for (int k=0; k<=na; k++) temp.push_back(0);
-                    b1.push_back(temp);
+                    for (int k=0; k<=na; k++) temp.push_back(0); b1.push_back(temp);
                 }
                 for (int i=0; i<=nc; i++) {
                     vector<double> temp;
-                    for (int k=0; k<=na; k++) temp.push_back(0);
-                    b2.push_back(temp);
+                    for (int k=0; k<=na; k++) temp.push_back(0); b2.push_back(temp);
                 }
                 for (int i=0; i<=nc; i++) {
                     vector<double> temp;
-                    for (int k=0; k<=na; k++) temp.push_back(0);
-                    c0.push_back(temp);
+                    for (int k=0; k<=na; k++) temp.push_back(0); c0.push_back(temp);
                 }
                 for (int i=0; i<=nc; i++) {
                     vector<vector<double>> temp2d;
                     for (int k=0; k<=nc; k++) {
                         vector<double> temp1d;
-                        for (int j=0; j<=na; j++) temp1d.push_back(0);
-                        temp2d.push_back(temp1d);
+                        for (int j=0; j<=na; j++) temp1d.push_back(0); temp2d.push_back(temp1d);
                     }
                     scp.push_back(temp2d);
                 }
@@ -1237,186 +1442,124 @@ class Simulation {
                     vector<vector<double>> temp2d;
                     for (int k=0; k<=na; k++) {
                         vector<double> temp1d;
-                        for (int j=0; j<=nc; j++) temp1d.push_back(0);
-                        temp2d.push_back(temp1d);
+                        for (int j=0; j<=nc; j++) temp1d.push_back(0); temp2d.push_back(temp1d);
                     }
                     sap.push_back(temp2d);
                 }
                 for (int i=0; i<=nc; i++) {
                     vector<double> temp;
-                    for (int k=0; k<=nc; k++) temp.push_back(0);
-                    tcp.push_back(temp);
+                    for (int k=0; k<=nc; k++) temp.push_back(0); tcp.push_back(temp);
                 }
                 for (int i=0; i<=na; i++) {
                     vector<double> temp;
-                    for (int k=0; k<=na; k++) temp.push_back(0);
-                    tap.push_back(temp);
+                    for (int k=0; k<=na; k++) temp.push_back(0); tap.push_back(temp);
                 }
                 for (int i=0; i<=nn; i++) {
                     vector<double> temp;
-                    for (int k=0; k<=nc; k++) temp.push_back(0);
-                    lcp.push_back(temp);
+                    for (int k=0; k<=nc; k++) temp.push_back(0); lcp.push_back(temp);
                 }
                 for (int i=0; i<=nn; i++) {
                     vector<double> temp;
-                    for (int k=0; k<=na; k++) temp.push_back(0);
-                    lap.push_back(temp);
+                    for (int k=0; k<=na; k++) temp.push_back(0); lap.push_back(temp);
                 }
                 for (int i=0; i<=nn; i++) {
                     vector<vector<double>> temp2d;
                     for (int k=0; k<=nc; k++) {
                         vector<double> temp1d;
-                        for (int j=0; j<=na; j++) temp1d.push_back(0);
-                        temp2d.push_back(temp1d);
+                        for (int j=0; j<=na; j++) temp1d.push_back(0); temp2d.push_back(temp1d);
                     }
                     xip.push_back(temp2d);
                 }
 
                 // Read data into matrices/vectors
                 for (int i=1; i<=nc; i++) {
-                    getline(file, line);
-                    stringstream linestream(line);
-                    string value;
+                    getline(file, line); stringstream linestream(line); string value;
 
-                    getline(linestream, value, ',');
-                    string x_S = value;
-                    getline(linestream, value, ',');
-                    nzc[i] = stoi(value);
+                    getline(linestream, value, ','); string x_S = value;
+                    getline(linestream, value, ','); nzc[i] = stoi(value);
                 }
                 for (int i=1; i<=na; i++) {
-                    getline(file, line);
-                    stringstream linestream(line);
-                    string value;
+                    getline(file, line); stringstream linestream(line); string value;
 
-                    getline(linestream, value, ',');
-                    string x_S = value;
-                    getline(linestream, value, ',');
-                    nza[i] = stoi(value);
+                    getline(linestream, value, ','); string x_S = value;
+                    getline(linestream, value, ','); nza[i] = stoi(value);
                 }
                 {
-                getline(file, line);
-                stringstream linestream(line);
-                string value;
+                    getline(file, line); stringstream linestream(line); string value;
 
-                getline(linestream, value, ',');
-                string x_S = value;
-                getline(linestream, value, ',');
-                at = stod(value);
-                getline(linestream, value, ',');
-                bt = stod(value);
-                getline(linestream, value, ',');
-                ct = stod(value);
-                getline(linestream, value, ',');
-                dt = stod(value);
-                getline(linestream, value, ',');
-                et = stod(value);
+                    getline(linestream, value, ','); string x_S = value;
+                    getline(linestream, value, ','); at = stod(value);
+                    getline(linestream, value, ','); bt = stod(value);
+                    getline(linestream, value, ','); ct = stod(value);
+                    getline(linestream, value, ','); dt = stod(value);
+                    getline(linestream, value, ','); et = stod(value);
 
-                ap0 = temperature(at, bt, ct, dt, et, temp);
+                    ap0 = temperature(at, bt, ct, dt, et, temp);
                 }
 
                 for (int i=1; i<=nc; i++) {
                     for (int j=1; j<=na; j++) {
                         {
-                        getline(file, line);
-                        stringstream linestream(line);
-                        string value;
+                            getline(file, line); stringstream linestream(line); string value;
 
-                        getline(linestream, value, ',');
-                        string x_S = value;
-                        getline(linestream, value, ',');
-                        at = stod(value);
-                        getline(linestream, value, ',');
-                        bt = stod(value);
-                        getline(linestream, value, ',');
-                        ct = stod(value);
-                        getline(linestream, value, ',');
-                        dt = stod(value);
-                        getline(linestream, value, ',');
-                        et = stod(value);
+                            getline(linestream, value, ','); string x_S = value;
+                            getline(linestream, value, ','); at = stod(value);
+                            getline(linestream, value, ','); bt = stod(value);
+                            getline(linestream, value, ','); ct = stod(value);
+                            getline(linestream, value, ','); dt = stod(value);
+                            getline(linestream, value, ','); et = stod(value);
 
-                        b0[i][j] = temperature(at, bt, ct, dt, et, temp);
+                            b0[i][j] = temperature(at, bt, ct, dt, et, temp);
                         }
                         {
-                        getline(file, line);
-                        stringstream linestream(line);
-                        string value;
+                            getline(file, line); stringstream linestream(line); string value;
 
-                        getline(linestream, value, ',');
-                        string x_S = value;
-                        getline(linestream, value, ',');
-                        at = stod(value);
-                        getline(linestream, value, ',');
-                        bt = stod(value);
-                        getline(linestream, value, ',');
-                        ct = stod(value);
-                        getline(linestream, value, ',');
-                        dt = stod(value);
-                        getline(linestream, value, ',');
-                        et = stod(value);
+                            getline(linestream, value, ','); string x_S = value;
+                            getline(linestream, value, ','); at = stod(value);
+                            getline(linestream, value, ','); bt = stod(value);
+                            getline(linestream, value, ','); ct = stod(value);
+                            getline(linestream, value, ','); dt = stod(value);
+                            getline(linestream, value, ','); et = stod(value);
 
-                        b1[i][j] = temperature(at, bt, ct, dt, et, temp);
+                            b1[i][j] = temperature(at, bt, ct, dt, et, temp);
                         }
                         {
-                        getline(file, line);
-                        stringstream linestream(line);
-                        string value;
+                            getline(file, line); stringstream linestream(line); string value;
 
-                        getline(linestream, value, ',');
-                        string x_S = value;
-                        getline(linestream, value, ',');
-                        at = stod(value);
-                        getline(linestream, value, ',');
-                        bt = stod(value);
-                        getline(linestream, value, ',');
-                        ct = stod(value);
-                        getline(linestream, value, ',');
-                        dt = stod(value);
-                        getline(linestream, value, ',');
-                        et = stod(value);
+                            getline(linestream, value, ','); string x_S = value;
+                            getline(linestream, value, ','); at = stod(value);
+                            getline(linestream, value, ','); bt = stod(value);
+                            getline(linestream, value, ','); ct = stod(value);
+                            getline(linestream, value, ','); dt = stod(value);
+                            getline(linestream, value, ','); et = stod(value);
 
-                        b2[i][j] = temperature(at, bt, ct, dt, et, temp);
+                            b2[i][j] = temperature(at, bt, ct, dt, et, temp);
                         }
                         {
-                        getline(file, line);
-                        stringstream linestream(line);
-                        string value;
+                            getline(file, line); stringstream linestream(line); string value;
 
-                        getline(linestream, value, ',');
-                        string x_S = value;
-                        getline(linestream, value, ',');
-                        at = stod(value);
-                        getline(linestream, value, ',');
-                        bt = stod(value);
-                        getline(linestream, value, ',');
-                        ct = stod(value);
-                        getline(linestream, value, ',');
-                        dt = stod(value);
-                        getline(linestream, value, ',');
-                        et = stod(value);
+                            getline(linestream, value, ','); string x_S = value;
+                            getline(linestream, value, ','); at = stod(value);
+                            getline(linestream, value, ','); bt = stod(value);
+                            getline(linestream, value, ','); ct = stod(value);
+                            getline(linestream, value, ','); dt = stod(value);
+                            getline(linestream, value, ','); et = stod(value);
 
-                        c0[i][j] = temperature(at, bt, ct, dt, et, temp);
+                            c0[i][j] = temperature(at, bt, ct, dt, et, temp);
                         }
                     }
                 }
 
                 for (int i=1; i<=nc-1; i++) {
                     for (int j=i+1; j<=nc; j++) {
-                        getline(file, line);
-                        stringstream linestream(line);
-                        string value;
+                        getline(file, line); stringstream linestream(line); string value;
 
-                        getline(linestream, value, ',');
-                        string x_S = value;
-                        getline(linestream, value, ',');
-                        at = stod(value);
-                        getline(linestream, value, ',');
-                        bt = stod(value);
-                        getline(linestream, value, ',');
-                        ct = stod(value);
-                        getline(linestream, value, ',');
-                        dt = stod(value);
-                        getline(linestream, value, ',');
-                        et = stod(value);
+                        getline(linestream, value, ','); string x_S = value;
+                        getline(linestream, value, ','); at = stod(value);
+                        getline(linestream, value, ','); bt = stod(value);
+                        getline(linestream, value, ','); ct = stod(value);
+                        getline(linestream, value, ','); dt = stod(value);
+                        getline(linestream, value, ','); et = stod(value);
 
                         tcp[i][j] = temperature(at, bt, ct, dt, et, temp);
                         tcp[j][i] = tcp[i][j];
@@ -1425,22 +1568,14 @@ class Simulation {
 
                 for (int i=1; i<=na-1; i++) {
                     for (int j=i+1; j<=na; j++) {
-                        getline(file, line);
-                        stringstream linestream(line);
-                        string value;
+                        getline(file, line); stringstream linestream(line); string value;
 
-                        getline(linestream, value, ',');
-                        string x_S = value;
-                        getline(linestream, value, ',');
-                        at = stod(value);
-                        getline(linestream, value, ',');
-                        bt = stod(value);
-                        getline(linestream, value, ',');
-                        ct = stod(value);
-                        getline(linestream, value, ',');
-                        dt = stod(value);
-                        getline(linestream, value, ',');
-                        et = stod(value);
+                        getline(linestream, value, ','); string x_S = value;
+                        getline(linestream, value, ','); at = stod(value);
+                        getline(linestream, value, ','); bt = stod(value);
+                        getline(linestream, value, ','); ct = stod(value);
+                        getline(linestream, value, ','); dt = stod(value);
+                        getline(linestream, value, ','); et = stod(value);
 
                         tap[i][j] = temperature(at, bt, ct, dt, et, temp);
                         tap[j][i] = tap[i][j];
@@ -1450,22 +1585,14 @@ class Simulation {
                 for (int k=1; k<=nc-1; k++) {
                     for (int i=k+1; i<=nc; i++) {
                         for (int j=1; j<=na; j++) {
-                            getline(file, line);
-                            stringstream linestream(line);
-                            string value;
+                            getline(file, line); stringstream linestream(line); string value;
 
-                            getline(linestream, value, ',');
-                            string x_S = value;
-                            getline(linestream, value, ',');
-                            at = stod(value);
-                            getline(linestream, value, ',');
-                            bt = stod(value);
-                            getline(linestream, value, ',');
-                            ct = stod(value);
-                            getline(linestream, value, ',');
-                            dt = stod(value);
-                            getline(linestream, value, ',');
-                            et = stod(value);
+                            getline(linestream, value, ','); string x_S = value;
+                            getline(linestream, value, ','); at = stod(value);
+                            getline(linestream, value, ','); bt = stod(value);
+                            getline(linestream, value, ','); ct = stod(value);
+                            getline(linestream, value, ','); dt = stod(value);
+                            getline(linestream, value, ','); et = stod(value);
 
                             scp[k][i][j] = temperature(at, bt, ct, dt, et, temp);
                             scp[i][k][j] = scp[k][i][j];
@@ -1476,22 +1603,14 @@ class Simulation {
                 for (int k=1; k<=na-1; k++) {
                     for (int i=k+1; i<=na; i++) {
                         for (int j=1; j<=nc; j++) {
-                            getline(file, line);
-                            stringstream linestream(line);
-                            string value;
+                            getline(file, line); stringstream linestream(line); string value;
 
-                            getline(linestream, value, ',');
-                            string x_S = value;
-                            getline(linestream, value, ',');
-                            at = stod(value);
-                            getline(linestream, value, ',');
-                            bt = stod(value);
-                            getline(linestream, value, ',');
-                            ct = stod(value);
-                            getline(linestream, value, ',');
-                            dt = stod(value);
-                            getline(linestream, value, ',');
-                            et = stod(value);
+                            getline(linestream, value, ','); string x_S = value;
+                            getline(linestream, value, ','); at = stod(value);
+                            getline(linestream, value, ','); bt = stod(value);
+                            getline(linestream, value, ','); ct = stod(value);
+                            getline(linestream, value, ','); dt = stod(value);
+                            getline(linestream, value, ','); et = stod(value);
 
                             sap[k][i][j] = temperature(at, bt, ct, dt, et, temp);
                             sap[i][k][j] = sap[k][i][j];
@@ -1501,22 +1620,14 @@ class Simulation {
 
                 for (int i=1; i<=nn; i++) {
                     for (int j=1; j<=nc; j++) {
-                        getline(file, line);
-                        stringstream linestream(line);
-                        string value;
+                        getline(file, line); stringstream linestream(line); string value;
 
-                        getline(linestream, value, ',');
-                        string x_S = value;
-                        getline(linestream, value, ',');
-                        at = stod(value);
-                        getline(linestream, value, ',');
-                        bt = stod(value);
-                        getline(linestream, value, ',');
-                        ct = stod(value);
-                        getline(linestream, value, ',');
-                        dt = stod(value);
-                        getline(linestream, value, ',');
-                        et = stod(value);
+                        getline(linestream, value, ','); string x_S = value;
+                        getline(linestream, value, ','); at = stod(value);
+                        getline(linestream, value, ','); bt = stod(value);
+                        getline(linestream, value, ','); ct = stod(value);
+                        getline(linestream, value, ','); dt = stod(value);
+                        getline(linestream, value, ','); et = stod(value);
 
                         lcp[i][j] = temperature(at, bt, ct, dt, et, temp);
                     }
@@ -1524,22 +1635,14 @@ class Simulation {
 
                 for (int i=1; i<=nn; i++) {
                     for (int j=1; j<=na; j++) {
-                        getline(file, line);
-                        stringstream linestream(line);
-                        string value;
+                        getline(file, line); stringstream linestream(line); string value;
 
-                        getline(linestream, value, ',');
-                        string x_S = value;
-                        getline(linestream, value, ',');
-                        at = stod(value);
-                        getline(linestream, value, ',');
-                        bt = stod(value);
-                        getline(linestream, value, ',');
-                        ct = stod(value);
-                        getline(linestream, value, ',');
-                        dt = stod(value);
-                        getline(linestream, value, ',');
-                        et = stod(value);
+                        getline(linestream, value, ','); string x_S = value;
+                        getline(linestream, value, ','); at = stod(value);
+                        getline(linestream, value, ','); bt = stod(value);
+                        getline(linestream, value, ','); ct = stod(value);
+                        getline(linestream, value, ','); dt = stod(value);
+                        getline(linestream, value, ','); et = stod(value);
 
                         lap[i][j] = temperature(at, bt, ct, dt, et, temp);
                     }
@@ -1574,12 +1677,10 @@ class Simulation {
 
             u = 0; z = 0;
             for (int i=1; i<=nc; i++) {
-                u += c[i] * pow(nzc[i], 2);
-                z += c[i] * nzc[i];
+                u += c[i] * pow(nzc[i], 2); z += c[i] * nzc[i];
             }
             for (int j=1; j<=na; j++) {
-                u += a[j] * pow(nza[j], 2);
-                z += a[j] * nza[j];
+                u += a[j] * pow(nza[j], 2); z += a[j] * nza[j];
             }
             fi = u / 2; fj = sqrt(fi);
             u = 6 * ap0 * fj;
@@ -1804,12 +1905,6 @@ class Simulation {
             gact[9] = gn[2]; gact[15] = gn[3];
             gact[16] = 1; gact[17] = 1;
             ndepact = 1;
-
-            //delete[] ec; delete[] fc; delete[] xc; delete[] ea;
-            //delete[] fa; delete[] xa; delete[] pp; delete[] p;
-            //delete[] pf; delete[] qp; delete[] q; delete[] qf; 
-            //delete[] cc; delete[] bf; delete[] b; delete[] bp;
-            //delete[] gc; delete[] ga; delete[] gn;
         }
 
         void eql_density() {
@@ -1817,84 +1912,201 @@ class Simulation {
         }
 
         void eql_invar() {
+            vector<string> minv_S, minvar_S;
+            int n1, n2, n3, n4, ncond, nbmin, ninvar, det, det1, z, ncm, i1, i2;
+            double swap, ah2o;
+            int ii, jj, kk;
 
+            kinvariant = 0; ncm = 14;
+            nbmin = 10;
+            ninvar = nbmin + 3;
+
+            for (int i=0; i<=ninvar; i++) minv_S.push_back("");
+            for (int i=0; i<=ninvar; i++) minvar_S.push_back("");
+            int kinv[ninvar+1] = {0}; double psminv[ninvar+1] = {0};
+            double winv[ninvar+1][ncm+1] = {0};
+            double psminvar[ninvar+1] = {0}; 
+            double t0[ninvar+1][ninvar+1] = {0}; double t1[ninvar+1][ninvar+1] = {0};
+            double t2[ninvar+1][ninvar+1] = {0}; double t3[ninvar+1][ncm+1] = {0};
+            double t4[ncm+1][ncm+1] = {0}; double tt4[ncm+1] = {0};
+
+            for (int k=1; k<=3; k++) {
+                psminv[k] = log10(psc[k]);
+            }
+            winv[1][11] = 1; winv[1][13] = 1; winv[1][0] = -1;
+            winv[2][11] = 1; winv[2][12] = -1; winv[2][14] = 1;
+            winv[3][11] = 1; winv[3][12] = 1; winv[3][0] = -1;
+
+            n1 = 3;
+            for (int l=1; k<=nm; k++) {
+                if (lmin[k] == 1) {
+                    n1 += 1;
+                    kinv[n1] = k;
+                    minv_S[n1] = mineral_S[k];
+                    psminv[n1] = log10(psol[k]);
+                    for (int j=0; j<=ncm; j++) {
+                        winv[n1][j] = wmin[k][j];
+                    }
+                }
+            }
+            for (int i=1; i<=n1; i++) {
+                swap = winv[i][0];
+                winv[i][0] = winv[i][14];
+                winv[i][14] = swap;
+            }
+            for (int i=1; i<=n1; i++) {
+                for (int j=i; j<=n1; j++) {
+                    t1[i][j] = 0;
+                    for (int k=0; k<=ncm-1; k++) {
+                        t1[i][j] += winv[i][k] * winv[j][k];
+                        t1[j][i] = t1[i][j];
+                        t0[i][j] = t1[i][j];
+                        t0[j][i] = t0[i][j];
+                    }
+                }
+            }
+            for (int k=2; k<=n1; k++) {
+                for (int i=k; i<=n1; i++) {
+                    if (abs(t1[i][k-1]) > epsilon) {
+                        u = t1[k-1][k-1] / t1[i][k-1];
+                        for (int j=k; j<=n1; j++) {
+                            t1[i][j] = t1[k-1][j] - t1[i][j] * u;
+                            if (abs(t1[i][j]) < epsilon) t1[i][j] = 0;
+                        }
+                    }
+                }
+            }
+            det = 1;
+            for (int i=1; i<=n1; i++) {
+                if (abs(t1[i][i]) < epsilon) {
+                    det = 0;
+                    break;
+                }
+            }
+
+            if (det == 0) {
+                n3 = 0;
+                n2 = n1-1;
+                for (int kk=1; kk<=n1; kk++) {
+                    ii = 0;
+                    for (int i=1; i<=n1; i++) {
+                        if (i != kk) {
+                            ii += 1;
+                            jj = 0;
+                            for (int j=1; j<=n1; j++) {
+                                if (j != kk) {
+                                    jj += 1;
+                                    t2[ii][jj] = t0[i][j];
+                                }
+                            }
+                        }
+                    }
+
+                    for (int k=2; k<=n2; k++) {
+                        for (int i=k; i<=n2; i++) {
+                            if (abs(t2[i][k-1]) > epsilon) {
+                                u = t2[k-1][k-1] / t2[i][k-1];
+                                for (int j=k; j<=n2; j++) {
+                                    t2[i][j] = t2[k-1][j] - t2[i][j] * u;
+                                    if (abs(t2[i][j]) < epsilon) t2[i][j] = 0;
+                                }
+                            }
+                        }
+                    }
+
+                    det1 = 1;
+                    for (int i=1; i<=n2; i++) {
+                        if (abs(t2[i][i]) < epsilon) {
+                            det1 = 0;
+                            break;
+                        }
+                    }
+                    if (det1 == 1) {
+                        n3 += 1;
+                        kinvar[n3] = kinv[kk];
+                        minvar_S[n3] = minv_S[kk];
+                        psminvar[n3] = psminv[kk];
+                        for (int j=0; j<=ncm; j++) {
+                            t3[n3][j] = winv[kk][j];
+                        }
+                    }
+                }
+
+                if (n3 == 0) {
+                    kinvariant = -1;
+                } else if (n3 > 0) {
+                    n4 = ncm;
+                    for (int j=ncm; j>=1; --j) {
+                        u = 0;
+                        for (int i=1; i<=n3; i++) {
+                            u += pow(t3[i][j], 2);
+                        }
+                        if (u < epsilon) {
+                            for (int k=j+1; k<=n4; k++) {
+                                for (int i=1; i<=n3; i++) {
+                                    t3[i][k-1] = t3[i][k];
+                                }
+                            }
+                            n4 -= 1;
+                        }
+                    }
+
+                    for (int i=1; i<=n4; i++) {
+                        for (int j=1; j<=n4; j++) {
+                            t4[i][j] = 0;
+                            for (int k=1; k<=n3; k++) {
+                                t4[i][j] += t3[k][i] * t3[k][j];
+                                t4[j][i] = t4[i][j];
+                            }
+                        }
+                    }
+                    for (int i=1; i<=n4; i++) {
+                        tt4[i] = 0;
+                        for (int k=1; k<=n3; k++) {
+                            tt4[i] += t3[k][i] * psminvar[k];
+                        }
+                    }
+
+                    for (int k=2; k<=n4; k++) {
+                        for (int i=k; i<=n4; i++) {
+                            if (abs(t4[i][k-1]) > epsilon) {
+                                u = t4[k-1][k-1] / t4[i][k-1];
+                                for (int j=k; j<=n4; j++) {
+                                    t4[i][j] = t4[k-1][j] - t4[i][j] * u;
+                                    if (abs(t4[i][j]) < epsilon) {
+                                        t4[i][j] = 0;
+                                    }
+                                }
+                                tt4[i] = tt4[k-1] - tt4[i] * u;
+                            }
+                        }
+                    }
+
+                    if (abs(t4[n4][n4]) > epsilon) {
+                        ah2o = pow(10, (tt4[n4] / t4[n4][n4]));
+                        if (ah2o > 1 or ah2o <= 0.02) {
+                            kinvariant = -2;
+                        } else {
+                            kinvariant = n3;
+                            for (int i=kinvariant; i>=1; --i) {
+                                if (kinvar[i] == 0) {
+                                    for (int k=1; k<=kinvariant-1; k++) {
+                                        kinvar[k] = kinvar[k+1];
+                                    }
+                                    kinvariant -= 1;
+                                }
+                            }
+                        }
+                    } else if(abs(t4[n4][n4]) <= epsilon) {
+                        kinvariant = -2;
+                    }
+                }
+            }
         }
-
-        void deconstruct() {
-        }
-
 };
 
 int main() {
-    Simulation test("example.txt");
-    
-
-    // cout << test.ap0 << endl << endl;
-
-    // for (int i=0; i<=25; i++) {
-    //     cout << i << " " << setw(10) << test.molal[i] << "   " << setw(10) << test.gact[i] << "   " << setw(10) << test.act[i] << endl;
-    // }
-
-    // cout << endl;
-    // cout << "nzc" << endl;
-    // for (int i=0; i<=9; i++) {
-    //     cout << test.nzc[i] << endl;
-    // }
-    // cout << endl;
-    // cout << "nza" << endl;
-    // for (int i=0; i<=11; i++) {
-    //     cout << test.nza[i] << endl;
-    // }
-
-    // cout << endl;
-    // cout << "tc" << endl;
-    // for (int i=0; i<=9; i++) {
-    //     for (int k=0; k<=9; k++) {
-    //         cout << setw(10) << test.tcp[i][k] << " ";
-    //     }
-    //     cout << endl;
-    // }
-
-    // cout << endl;
-    // cout << "ta" << endl;
-    // cout << setw(10) << "" << " ";
-    // for (int i=0; i<=11; i++) cout << setw(10) << i << " ";
-    // cout << endl;
-    // for (int i=0; i<=11; i++) {
-    //     cout << setw(10) << i << " ";
-    //     for (int k=0; k<=11; k++) {
-    //         cout << setw(10) << test.tap[i][k] << " ";
-    //     }
-    //     cout << endl;
-    // }
-
-    // cout << endl;
-    // cout << "lc" << endl;
-    // cout << setw(10) << "" << " ";
-    // for (int i=0; i<=11; i++) cout << setw(10) << i << " ";
-    // cout << endl;
-    // for (int i=0; i<=3; i++) {
-    //     cout << setw(10) << i << " ";
-    //     for (int k=0; k<=9; k++) {
-    //         cout << setw(10) << test.lcp[i][k] << " ";
-    //     }
-    //     cout << endl;
-    // }
-
-    // cout << endl;
-    // cout << "la" << endl;
-    // cout << setw(10) << "" << " ";
-    // for (int i=0; i<=11; i++) cout << setw(10) << i << " ";
-    // cout << endl;
-    // for (int i=0; i<=3; i++) {
-    //     cout << setw(10) << i << " ";
-    //     for (int k=0; k<=11; k++) {
-    //         cout << setw(10) << test.lap[i][k] << " ";
-    //     }
-    //     cout << endl;
-    // }
-
-    //cout << test.tcp[6][9] << endl;
+    Simulation test("input.dat");
 
     return 0;
 }
