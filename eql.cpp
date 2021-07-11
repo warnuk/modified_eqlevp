@@ -9,6 +9,8 @@
 #include <sstream>
 #include <cmath>
 #include <stdio.h>
+#include <stdlib.h>
+#include <regex>
 
 using namespace std;
 
@@ -22,6 +24,18 @@ string upper_to_lower(string input) {
   for (string::size_type i=0; i<input.length(); ++i)
          input[i] = tolower(input[i]);
   return input;
+}
+
+std::string ltrim(const std::string &s) {
+    return std::regex_replace(s, std::regex("^\\s+"), std::string(""));
+}
+ 
+std::string rtrim(const std::string &s) {
+    return std::regex_replace(s, std::regex("\\s+$"), std::string(""));
+}
+ 
+std::string trim(const std::string &s) {
+    return ltrim(rtrim(s));
 }
 
 double g0(double x) {
@@ -76,7 +90,7 @@ class Simulation {
     // declare variables
     int i, j, k, l, ii, nminer, nm, nt, nc, na, ncomp, icat, iani, nconstit;
     int nm0, nu, ni, nj, num, nwmp, nwm, kinvariant, nw, nmneuf, npasfich, npasimp, ncompt, npasecran;
-    string num_S, unit_S, x_S, e_S, repinit_S, min_S, pco_S, syst_S, rep_S;
+    string num_S, unit_S, x_S, e_S, repinit_S, min_S, pco_S, rep_S;
     string zone_S, m_S, p_S, y_S, fichmin_S, molemin_S, fich_S, prnt_S, constituant_S;
     string at_S, bt_S, ct_S, dt_S, et_S;
     double temp, dens, ph, at, bt, ct, dt, et, pkmol, pkeq;
@@ -86,7 +100,7 @@ class Simulation {
 
     string label, tra_file, log_file, event_file, chem_file, min_file;
     string pco2; double max_sal;
-    string system; string output_units, units;
+    string syst_S; string output_units, units;
     vector<string> add_min; vector<string> rem_min;
     int print_step, output_step, verbose, output;
     ifstream file; 
@@ -128,9 +142,9 @@ class Simulation {
             
             // files
             tra_file = label + ".tra"; log_file = label + ".log";
-            event_file = label + ".j" + system + "@";
-            chem_file = label + ".j" + system + "&";
-            min_file = label + ".j" + system + "%";
+            event_file = label + ".j" + syst_S + "@";
+            chem_file = label + ".j" + syst_S + "&";
+            min_file = label + ".j" + syst_S + "%";
 
             // set initial values
             tinit = temp;
@@ -154,7 +168,7 @@ class Simulation {
             for (int i = 0; i <= n; i++) {
                 getline(file, line);
                 stringstream linestream(line); string value;
-                getline(linestream, value, ','); aq_S[i] = value;
+                getline(linestream, value, ','); aq_S[i] = trim(value);
                 getline(linestream, value, ','); atom[i] = stod(value);
                 getline(linestream, value, ','); nch[i] = stoi(value);
             }
@@ -238,7 +252,7 @@ class Simulation {
                     stringstream linestream(line); string value, x_S;
                     double at, bt, ct, dt, et;
                     
-                    getline(linestream, value, ','); x_S = upper_to_lower(value);
+                    getline(linestream, value, ','); x_S = upper_to_lower(trim(value));
                     getline(linestream, value, ','); at = stod(value);
                     getline(linestream, value, ','); bt = stod(value);
                     getline(linestream, value, ','); ct = stod(value);
@@ -258,12 +272,12 @@ class Simulation {
                     double at, bt, ct, dt, et;
                     int ncomp; double c_ion;
             
-                    getline(linestream, value, ','); mineral_S.at(k) = value;
+                    getline(linestream, value, ','); mineral_S.at(k) = trim(value);
                     getline(linestream, value, ','); ncomp = stoi(value);
             
                     for (int i=1; i<=ncomp; i++) {
                         getline(linestream, value, ','); c_ion = stod(value);
-                        getline(linestream, value, ','); nom_ion_S[i] = value;
+                        getline(linestream, value, ','); nom_ion_S[i] = trim(value);
                         x_S = upper_to_lower(nom_ion_S.at(i));
 
                         for (int j=0; j<=nt; j++) {
@@ -340,7 +354,7 @@ class Simulation {
                 for (int k=1; k<=nm; k++) {
                     getline(file, line);
                     stringstream linestream(line); string value;
-                    getline(linestream, value, ','); mineral0_S.at(k) = value;
+                    getline(linestream, value, ','); mineral0_S.at(k) = trim(value);
                 }
                 for (int k=1; k<=nm; k++) {
                     nwmin[k] = 0;
@@ -581,7 +595,7 @@ class Simulation {
                             for (int i=1; i<=n; i++) {
                                 if (molal[i] + xx[i] / nconv < 0) {
                                     cout << "the equation set diverges: end of program" << endl;
-                                    goto STOP;
+                                    stop_simulation();
                                 }
                             }
                         }
@@ -1031,8 +1045,6 @@ class Simulation {
                 }
                 if (verbose == 1) cout << endl;
 
-                // LINE 879
-                // Modify database
                 nmneuf = 0;
 
                 if (add_min.size() > 0 or rem_min.size() > 0) {
@@ -1157,7 +1169,7 @@ class Simulation {
                     for (int i=16; i<=25; i++) {
                         outfile << molal[i] << endl;
                     }
-                    outfile << system << endl;
+                    outfile << syst_S << endl;
                     outfile << xi << endl;
                     outfile << output_step << endl;
                     outfile << output << endl;
@@ -1176,9 +1188,12 @@ class Simulation {
                     outfile.close();
                 }
 
+                int result = system("./evp");
+
 
             STOP: 
-                cout << "done" << endl;
+                stop_simulation();
+                
         }
 
 
@@ -1256,7 +1271,7 @@ class Simulation {
                     pco2 = value;
                 } else if (name == "system") {
                     getline(linestream, value, ',');
-                    system = value;
+                    syst_S = value;
                 } else if (name == "units") {
                     getline(linestream, value, ',');
                     output_units = value;
@@ -1400,19 +1415,19 @@ class Simulation {
                 for (int i=1; i<=nc; i++) {
                     getline(file, line); stringstream linestream(line); string value;
 
-                    getline(linestream, value, ','); string x_S = value;
+                    getline(linestream, value, ','); string x_S = trim(value);
                     getline(linestream, value, ','); nzc[i] = stoi(value);
                 }
                 for (int i=1; i<=na; i++) {
                     getline(file, line); stringstream linestream(line); string value;
 
-                    getline(linestream, value, ','); string x_S = value;
+                    getline(linestream, value, ','); string x_S = trim(value);
                     getline(linestream, value, ','); nza[i] = stoi(value);
                 }
                 {
                     getline(file, line); stringstream linestream(line); string value;
 
-                    getline(linestream, value, ','); string x_S = value;
+                    getline(linestream, value, ','); string x_S = trim(value);
                     getline(linestream, value, ','); at = stod(value);
                     getline(linestream, value, ','); bt = stod(value);
                     getline(linestream, value, ','); ct = stod(value);
@@ -1427,7 +1442,7 @@ class Simulation {
                         {
                             getline(file, line); stringstream linestream(line); string value;
 
-                            getline(linestream, value, ','); string x_S = value;
+                            getline(linestream, value, ','); string x_S = trim(value);
                             getline(linestream, value, ','); at = stod(value);
                             getline(linestream, value, ','); bt = stod(value);
                             getline(linestream, value, ','); ct = stod(value);
@@ -1439,7 +1454,7 @@ class Simulation {
                         {
                             getline(file, line); stringstream linestream(line); string value;
 
-                            getline(linestream, value, ','); string x_S = value;
+                            getline(linestream, value, ','); string x_S = trim(value);
                             getline(linestream, value, ','); at = stod(value);
                             getline(linestream, value, ','); bt = stod(value);
                             getline(linestream, value, ','); ct = stod(value);
@@ -1451,7 +1466,7 @@ class Simulation {
                         {
                             getline(file, line); stringstream linestream(line); string value;
 
-                            getline(linestream, value, ','); string x_S = value;
+                            getline(linestream, value, ','); string x_S = trim(value);
                             getline(linestream, value, ','); at = stod(value);
                             getline(linestream, value, ','); bt = stod(value);
                             getline(linestream, value, ','); ct = stod(value);
@@ -1463,7 +1478,7 @@ class Simulation {
                         {
                             getline(file, line); stringstream linestream(line); string value;
 
-                            getline(linestream, value, ','); string x_S = value;
+                            getline(linestream, value, ','); string x_S = trim(value);
                             getline(linestream, value, ','); at = stod(value);
                             getline(linestream, value, ','); bt = stod(value);
                             getline(linestream, value, ','); ct = stod(value);
@@ -1479,7 +1494,7 @@ class Simulation {
                     for (int j=i+1; j<=nc; j++) {
                         getline(file, line); stringstream linestream(line); string value;
 
-                        getline(linestream, value, ','); string x_S = value;
+                        getline(linestream, value, ','); string x_S = trim(value);
                         getline(linestream, value, ','); at = stod(value);
                         getline(linestream, value, ','); bt = stod(value);
                         getline(linestream, value, ','); ct = stod(value);
@@ -1495,7 +1510,7 @@ class Simulation {
                     for (int j=i+1; j<=na; j++) {
                         getline(file, line); stringstream linestream(line); string value;
 
-                        getline(linestream, value, ','); string x_S = value;
+                        getline(linestream, value, ','); string x_S = trim(value);
                         getline(linestream, value, ','); at = stod(value);
                         getline(linestream, value, ','); bt = stod(value);
                         getline(linestream, value, ','); ct = stod(value);
@@ -1512,7 +1527,7 @@ class Simulation {
                         for (int j=1; j<=na; j++) {
                             getline(file, line); stringstream linestream(line); string value;
 
-                            getline(linestream, value, ','); string x_S = value;
+                            getline(linestream, value, ','); string x_S = trim(value);
                             getline(linestream, value, ','); at = stod(value);
                             getline(linestream, value, ','); bt = stod(value);
                             getline(linestream, value, ','); ct = stod(value);
@@ -1530,7 +1545,7 @@ class Simulation {
                         for (int j=1; j<=nc; j++) {
                             getline(file, line); stringstream linestream(line); string value;
 
-                            getline(linestream, value, ','); string x_S = value;
+                            getline(linestream, value, ','); string x_S = trim(value);
                             getline(linestream, value, ','); at = stod(value);
                             getline(linestream, value, ','); bt = stod(value);
                             getline(linestream, value, ','); ct = stod(value);
@@ -1547,7 +1562,7 @@ class Simulation {
                     for (int j=1; j<=nc; j++) {
                         getline(file, line); stringstream linestream(line); string value;
 
-                        getline(linestream, value, ','); string x_S = value;
+                        getline(linestream, value, ','); string x_S = trim(value);
                         getline(linestream, value, ','); at = stod(value);
                         getline(linestream, value, ','); bt = stod(value);
                         getline(linestream, value, ','); ct = stod(value);
@@ -1562,7 +1577,7 @@ class Simulation {
                     for (int j=1; j<=na; j++) {
                         getline(file, line); stringstream linestream(line); string value;
 
-                        getline(linestream, value, ','); string x_S = value;
+                        getline(linestream, value, ','); string x_S = trim(value);
                         getline(linestream, value, ','); at = stod(value);
                         getline(linestream, value, ','); bt = stod(value);
                         getline(linestream, value, ','); ct = stod(value);
@@ -1848,7 +1863,7 @@ class Simulation {
                     stringstream linestream(line);
                     string value;
 
-                    getline(linestream, value, ','); x_S = value;
+                    getline(linestream, value, ','); x_S = trim(value);
                     getline(linestream, value, ','); ao[i][j] = stod(value);
                     getline(linestream, value, ','); bo[i][j] = stod(value);
                     getline(linestream, value, ','); au[i][j] = stod(value);
@@ -2069,6 +2084,10 @@ class Simulation {
                     }
                 }
             }
+        }
+
+        void stop_simulation() {
+            exit(0);
         }
 };
 
