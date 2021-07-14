@@ -8,7 +8,8 @@ ca,2.7
 mg,1.3
 cl,39.5
 alk,56.2
-pco2,-2.9208
+pco2,-2.5228787452803374
 system,c
 units,molar
-remove,brucite,dolomite,nesquehonite,magnesite,hydromagnesite
+add,calcite
+remove,dolomite,nesquehonite,brucite,magnesite,hydromagnesite

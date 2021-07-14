@@ -6,7 +6,6 @@ Created on Sun Jun 13 08:58:47 2021
 @author: warnuk
 """
 import eqlevp
-import os
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
@@ -17,33 +16,31 @@ if __name__ == "__main__":
     
     t1 = perf_counter()
     
-    pco2_ppm = 1000
+    pco2_ppm = 3000
     log_pco2 = np.log10(pco2_ppm / 1e6)
     temp = 30
-
     system = "c"
     
-    evp = True
-    
-    os.system("./eql")
+    plot = True
             
 
-    # test = eqlevp.simulation(label='test', temp=temp, dens=1, ph=6.55, na=84.5, 
-    #                          k=3.3, li=0, ca=2.7, mg=1.3, cl=39.5, so4=0, 
-    #                          alk=56.2, no3=0, si=0, b=0)
+    test = eqlevp.simulation(label='test', temp=temp, dens=1, ph=6.55, na=84.5, 
+                              k=3.3, ca=2.7, mg=1.3, cl=39.5, 
+                              alk=56.2, pco2=log_pco2, system=system,
+                              units='molar', add=['calcite'], 
+                              remove=['dolomite','nesquehonite','brucite',
+                                      'magnesite','hydromagnesite'])
+    test.run_simulation()
     
-    # test.run_eql(log_pco2, system, units="molar", add_minerals=['calcite'],
-    #               rem_minerals=['dolomite', 'nesquehonite',
-    #                             'magnesite', 'hydromagnesite'],
-    #               verbose=True, call_evp=evp)
 
     t2 = perf_counter()
     
     print()
     print("Simulation time: {} seconds".format(round(t2-t1, 2)))
 
-    if evp:
-        df = pd.read_csv("test.jc%")
+    if plot:
+        min_file = "{}.j{}%".format(test.label, test.system)
+        df = pd.read_csv(min_file)
 
         x = np.log10(df.fc.values)
         for i in range(1, df.shape[1]):
@@ -52,7 +49,7 @@ if __name__ == "__main__":
         
             plt.plot(x, y, label=label)
 
-        #plt.title("{}ºC, {}ppm, {} system".format(temp, pco2_ppm, "closed" if test.system == "c" else "open"))
+        plt.title("{}ºC, {}ppm, {} system".format(temp, pco2_ppm, "closed" if test.system == "c" else "open"))
         plt.xlabel("log(fc)")
         plt.ylabel("moles precipitated")
         plt.yscale('log')
