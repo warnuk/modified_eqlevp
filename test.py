@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     system = "c"
     
-    evp = True
+    evp = False
 
 
     test = eqlevp.simulation(label='test', temp=temp, dens=1, ph=6.55, na=84.5, 
@@ -31,9 +31,8 @@ if __name__ == "__main__":
                              alk=56.2, no3=0, si=0, b=0)
     
     test.run_eql(log_pco2, system, units="molar", add_minerals=['calcite'],
-                  rem_minerals=['dolomite', 'nesquehonite', 'brucite',
-                                'magnesite', 'hydromagnesite', 'antarcticite',
-                                'aragonite', 'burkeite', 'glaserite'],
+                  rem_minerals=['dolomite', 'nesquehonite',
+                                'magnesite', 'hydromagnesite'],
                   verbose=True, call_evp=evp)
 
     t2 = perf_counter()

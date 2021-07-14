@@ -1486,7 +1486,7 @@ class simulation:
 
         for i in range(0, d.shape[0]):
             if u[i] + tests[i] != 0:
-                d[i] = 200 * np.abs(u[i] + tests[i]) / (u[i] + tests[i])
+                d[i] = 200 * np.abs(u[i] - tests[i]) / (u[i] + tests[i])
         #d[u + tests != 0] = 200 * np.abs(u - tests) / (u + tests)
 
 

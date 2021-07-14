@@ -39,7 +39,7 @@ std::string trim(const std::string &s) {
 }
 
 double g0(double x) {
-    return 2 * (1 - (1-x) * exp(-x)) / pow(x, 2);
+    return 2 * (1 - (1+x) * exp(-x)) / pow(x, 2);
 }
 
 double g1(double x) {
@@ -76,7 +76,7 @@ class Simulation {
     public:
 
     // declare arrays and vectors
-    array<string,max_constit> constit_S; array<string,n+1> aq_S;
+    array<string,max_constit+1> constit_S; array<string,n+1> aq_S;
     double tot[ntot+1] = {0}; double tot0[ntot+1] = {0}; 
     double totinit[ntot+1] = {0}; double molal[n+1] = {0}; 
     double act[n+1] = {0}; double gact[n+1] = {0}; 
@@ -96,26 +96,30 @@ class Simulation {
     double temp, dens, ph, at, bt, ct, dt, et, pkmol, pkeq;
     double ap0, bp0;
     double a, b, c, u, sc, cmax, sa, amax, dca, delta, xu, eq, s, ee, stdi, aw, fi, std, ef, tinit, stdmax;
-    double po, po0, poinit, phinit, ph0, pc, poa, alcar, albor, alsil, aloh, alh, altest, d, v, xi, eps;
+    double po, po0, poinit, phinit, ph0, pc, alcar, albor, alsil, aloh, alh, altest, d, v, xi, eps;
 
     string label, tra_file, log_file, event_file, chem_file, min_file;
-    string pco2; double max_sal;
-    string syst_S; string output_units, units;
-    vector<string> add_min; vector<string> rem_min;
+    string pco2, syst_S; string output_units, units;
     int print_step, output_step, verbose, output;
+    double max_sal, dilute;
+    
     ifstream file; 
     ofstream outfile;
     string line;
 
     int nconv = 2; int ndepact = 0; string pco2_S = "";
     double pk = 0.1; double dph = 0.2; double mh2o = 55.51;
-    double dil = 0; double diltot = 1;
+    double dil = 0; double diltot = 1; double poa = 0;
 
     // Declare vectors
-    vector<vector<double>> wmin;
+    vector<string> add_min; vector<string> rem_min;
+    vector<string> nom_ion_S, mineral_S, mineral0_S;
     vector<double> c_ion, mu, mum, psol, pai;
     vector<int> kinvar, lmin, nwmin;
-    vector<string> nom_ion_S, mineral_S, mineral0_S;
+    vector<vector<double>> wmin;
+    
+    
+    
 
     // Declare vectors for activity calculation
     vector<int> nzc, nza;
@@ -150,14 +154,14 @@ class Simulation {
             tinit = temp;
 
             // Set nminer based on nonzero input chemistry
-            nminer = 0;
+            nminer = 1;
             for (int i = 1; i <= ntot; i++) {
-                if (tot[i] > 0) nminer ++;
+                if (tot[i] > 0) nminer += 1;
             }
 
             // Interpret units based on reported density
-            if (dens == 0) dens = 1;
-            if (dens == 1) {
+            if (dens == 0) dens = 1.e0;
+            if (dens == 1.e0) {
                 units = "molal";
             } else {
                 units = "molar";
@@ -196,9 +200,9 @@ class Simulation {
             for (int i=1; i<=14; i++) {
                 getline(file, line);
                 stringstream linestream(line); string value;
-                double at, bt, ct, dt, et;
+                //double at, bt, ct, dt, et;
                 
-                getline(linestream, value, ',');
+                getline(linestream, value, ','); x_S = trim(value);
                 getline(linestream, value, ','); at = stod(value);
                 getline(linestream, value, ','); bt = stod(value);
                 getline(linestream, value, ','); ct = stod(value);
@@ -222,21 +226,17 @@ class Simulation {
             }
 
             // Initialize arrays of zeros + empty string arrays
-            for (int i=0; i<=nt; i++) nom_ion_S.push_back("");
+            for (int i=0; i<=nt; i++) {
+                nom_ion_S.push_back(""); c_ion.push_back(0); mu.push_back(0); kinvar.push_back(0);
+            }
             for (int i=0; i<=nm; i++) {
                 mineral_S.push_back(""); mineral0_S.push_back("");
-            }
-            for (int i=0; i<=nm; i++) {
-                    vector<double> temp;
-                    for (int k=0; k<=nt; k++) temp.push_back(0);
-                    wmin.push_back(temp);
-            }
-            for (int i=0; i<=nt; i++) {
-                c_ion.push_back(0); mu.push_back(0); kinvar.push_back(0);
-            }
-            for (int i=0; i<=nm; i++) {
                 mum.push_back(0); psol.push_back(0); pai.push_back(0);
                 lmin.push_back(0); nwmin.push_back(0);
+
+                vector<double> temp1d;
+                for (int k=0; k<=nt; k++) temp1d.push_back(0);
+                wmin.push_back(temp1d);
             }
 
             {
@@ -269,20 +269,19 @@ class Simulation {
                 for (int k=1; k<=nm; k++) {
                     getline(file, line);
                     stringstream linestream(line); string value, x_S;
-                    double at, bt, ct, dt, et;
-                    int ncomp; double c_ion;
+                    //int ncomp; double c_ion;
             
-                    getline(linestream, value, ','); mineral_S.at(k) = trim(value);
+                    getline(linestream, value, ','); mineral_S[k] = trim(value);
                     getline(linestream, value, ','); ncomp = stoi(value);
             
                     for (int i=1; i<=ncomp; i++) {
-                        getline(linestream, value, ','); c_ion = stod(value);
+                        getline(linestream, value, ','); c_ion[i] = stod(value);
                         getline(linestream, value, ','); nom_ion_S[i] = trim(value);
-                        x_S = upper_to_lower(nom_ion_S.at(i));
+                        x_S = upper_to_lower(nom_ion_S[i]);
 
                         for (int j=0; j<=nt; j++) {
                             if (x_S == aq_S[j]) {
-                                wmin[k][j] = c_ion;
+                                wmin[k][j] = c_ion[i];
                             }
                         }
                     }
@@ -300,7 +299,7 @@ class Simulation {
 
             // Set psol
             for (int k=1; k<=nm; k++) {
-                double u = mum[k];
+                u = mum[k];
                 for (int i=0; i<=nt; i++) {
                     u = u - wmin[k][i] * mu[i];
                 }
@@ -351,37 +350,27 @@ class Simulation {
                     getline(file, line);
                 }
 
-                for (int k=1; k<=nm; k++) {
+                for (int k=1; k<=nm0; k++) {
                     getline(file, line);
                     stringstream linestream(line); string value;
-                    getline(linestream, value, ','); mineral0_S.at(k) = trim(value);
+                    getline(linestream, value, ','); mineral0_S[k] = trim(value);
                 }
                 for (int k=1; k<=nm; k++) {
                     nwmin[k] = 0;
                 }
                 for (int k=1; k<=nm; k++) {
                     for (int l=1; l<=nm0; l++) {
-                        if (mineral0_S.at(l) == mineral_S.at(k)) {
-                            nwmin[k] = 1;
-                        }
+                        if (mineral0_S[l] == mineral_S[k]) nwmin[k] = 1;
                     }
                 }
                 file.close();
             }
-
             min_S = "murtf3";
-
-            // run the main eql loop
-            // ...loop conditions:
-            // ...500: calculate molalities
-            // ...200: iterate activities
-            // ...400: screen output
-            // ...error=true: exit/error
 
             LOOP500:
                 molal[1] = tot[1]; molal[2] = tot[2]; molal[3] = tot[3];
                 molal[6] = tot[6]; molal[8] = tot[8]; 
-                tot[11] = pow(10, -ph); 
+                tot[11] = pow(10, -ph);
                 molal[11] = tot[11];
                 molal[13] = psc[1] / molal[11];
                 if (tot[9] > 0) {
@@ -394,7 +383,6 @@ class Simulation {
                     while (true) {
                         eq = a * xu + b * pow(xu, 3) + c * pow(xu, 4);
                         if (200 * abs(eq - tot[9]) / (eq + tot[9]) < pk) break;
-                        
                         u = u / 2;
                         if (eq > tot[9]) {
                         xu -= u;
@@ -407,19 +395,13 @@ class Simulation {
                     molal[20] = molal[13] * pow(molal[9], 3) * psc[8];
                     molal[21] = pow(molal[13], 2) * pow(molal[9], 4) * psc[9];
                 }
-                molal[14] = ((tot[12] + molal[11] - molal[13] - 
-                                molal[19] - molal[20] - 2 * molal[21]) / 
-                                (2 + molal[11] / psc[2]));
-                molal[12] = ((tot[12] + molal[11] - molal[13] -
-                                molal[19] - molal[20] - 2 * molal[21]) /
-                                (1 + 2 * psc[2] / molal[11]));
-                molal[15] = (molal[12] * molal[11] / psc[3]);
-                molal[4] = (tot[4] / (1 + molal[14] / psc[4] + molal[19] / psc[10]));
-                molal[16] = (molal[4] * molal[14] / psc[4]);
-                molal[22] = (molal[4] * molal[19] / psc[10]);
-                molal[5] = tot[5] / (1 + molal[14] / psc[5] + 
-                                        molal[13] / psc[6] + 
-                                        molal[19] / psc[11]);
+                molal[14] = (tot[12] + molal[11] - molal[13] - molal[19] - molal[20] - 2 * molal[21]) / (2 + molal[11] / psc[2]);
+                molal[12] = (tot[12] + molal[11] - molal[13] - molal[19] - molal[20] - 2 * molal[21]) / (1 + 2 * psc[2] / molal[11]);
+                molal[15] = molal[12] * molal[11] / psc[3];
+                molal[4] = tot[4] / (1 + molal[14] / psc[4] + molal[19] / psc[10]);
+                molal[16] = molal[4] * molal[14] / psc[4];
+                molal[22] = molal[4] * molal[19] / psc[10];
+                molal[5] = tot[5] / (1 + molal[14] / psc[5] + molal[13] / psc[6] +  molal[19] / psc[11]);
                 molal[17] = molal[5] * molal[14] / psc[5];
                 molal[18] = molal[5] * molal[13] / psc[6];
                 molal[23] = molal[5] * molal[19] / psc[11];
@@ -472,14 +454,10 @@ class Simulation {
                 if (units == "molar") {
                     ee = 1000 / (1000 * dens - s);
                     for (int i=1; i<=ntot; i++) {
-                        if (i != 11) {
-                            tot[i] = tot[i] * ee;
-                        }
+                        if (i != 11) tot[i] = tot[i] * ee;
                     }
                     for (int i=1; i<=n; i++) {
-                        if (i != 11) {
-                            molal[i] = molal[i] * ee;
-                        }
+                        if (i != 11) molal[i] = molal[i] * ee;
                     }
                 } else if (units == "molal") {
                     ee = 1;
@@ -648,20 +626,15 @@ class Simulation {
                         nchcat[i] = nch[i];
                     }
                     for (int j=1; j<=3; j++) {
-                        ani[j] = tot[j];
+                        ani[j] = tot[j+5];
                         nchani[j] = -nch[j+5];
                     }
                     ani[4] = molal[12]; ani[5] = molal[14] + molal[16] + molal[17];
                     nchani[4] = -nch[12]; nchani[5] = -nch[14];
-                    eql_density(); // needs to be defined
+                    eql_density();
                 }
 
                 po = log10(act[15] / psc[14]);
-                cout << act[15] << endl;
-
-        
-
-
                 if (pco2_S == "") {
                     if (diltot == 1) {
                         poinit = po;
@@ -688,21 +661,14 @@ class Simulation {
                         cout << endl;
                     }
                     if (abs(po - pc) > 0.01) {
-                        if (po < pc and poa < pc) {
-                            ph = ph - dph;
-                        }
+                        if (po < pc and poa < pc) ph = ph - dph;
                         if (po < pc and poa > pc) {
-                            dph = dph / 2;
-                            ph = ph - dph;
+                            dph = dph / 2; ph = ph - dph;
                         }
-                        if (po > pc and poa > pc) {
-                            ph = ph + dph;
-                        }
+                        if (po > pc and poa > pc) ph = ph + dph;
                         if ((po > pc) and (poa < pc)) {
-                            dph = dph / 2;
-                            ph = ph + dph;
+                            dph = dph / 2; ph = ph + dph;
                         }
-                        //cout << act[15] << endl;
                         poa = po;
                         goto LOOP200;
                     }
@@ -900,7 +866,6 @@ class Simulation {
                     }
                     outfile.close();
                 }
-                // LINE 767
 
                 for (int k=1; k<=nm; k++) {
                     lmin[k] = 0;
@@ -1011,11 +976,13 @@ class Simulation {
                 if (verbose == 1) {
                     cout << endl;
                     cout << "Dilute the solution:" << endl;
-                    cout << "  dilution = 1/" << dil << endl;
+                    cout << "  dilution = 1/" << dilute << endl;
                 }
 
-                if (dil > 1) {
+                if (dilute > 1) {
+                    dil = dilute; dilute = 1;
                     diltot = diltot * dil;
+
                     pco2_S = ""; pk = pk0; dph = 0.2;
                     for (int i=1; i<=12; i++) {
                         if (i != 11) tot[i] = tot[i] / dil;
@@ -1130,7 +1097,7 @@ class Simulation {
 
                 // Transfer file
                 {
-                    constituant_S = "label,fc,eva,ds,ph,alk";
+                    constituant_S = "label,fc,ah2o,sal,eva,ds,ph,alk";
                     for (int i=1; i<=8; i++) {
                         if (tot[i] > 0) {
                             zone_S = upper_to_lower(aq_S[i]);
@@ -1207,7 +1174,7 @@ class Simulation {
 
             // Set default parameters
             label = ""; temp = 25; dens = 1.0;; ph = 7; pco2 = ""; max_sal = 0;
-            pkmol = 0.001; pkeq = 0.0000000000001; dil = 1.0; xi = 0;
+            pkmol = 0.001; pkeq = 0.0000000000001; dilute = 1.0; xi = 0;
             print_step = 1; output_step = 1; verbose = 1; output = 1;
 
             // Open the input file into the file stream
@@ -1277,7 +1244,7 @@ class Simulation {
                     output_units = value;
                 } else if (name == "dil") {
                     getline(linestream, value, ',');
-                    dil = stod(value);
+                    dilute = stod(value);
                 } else if (name == "add") {
                     while (linestream.good()) {
                         string substr;
@@ -1342,33 +1309,31 @@ class Simulation {
 
             {
             file.open("coefft4");
-            getline(file, line);
-            stringstream linestream(line);
-            string value;
+            
+            getline(file, line); stringstream linestream(line); string value;
             getline(linestream, value, ','); nc = stoi(value);
             getline(linestream, value, ','); na = stoi(value);
             getline(linestream, value, ','); nn = stoi(value);
             
-
             if (ndepact == 0) {
                 // initialize 1d, 2d, and 3d vectors to 0
                 for (int i=0; i<=nc; i++) nzc.push_back(0);
                 for (int i=0; i<=na; i++) nza.push_back(0);
                 for (int i=0; i<=nc; i++) {
-                    vector<double> temp;
-                    for (int k=0; k<=na; k++) temp.push_back(0); b0.push_back(temp);
+                    vector<double> temp1d;
+                    for (int k=0; k<=na; k++) temp1d.push_back(0); b0.push_back(temp1d);
                 }
                 for (int i=0; i<=nc; i++) {
-                    vector<double> temp;
-                    for (int k=0; k<=na; k++) temp.push_back(0); b1.push_back(temp);
+                    vector<double> temp1d;
+                    for (int k=0; k<=na; k++) temp1d.push_back(0); b1.push_back(temp1d);
                 }
                 for (int i=0; i<=nc; i++) {
-                    vector<double> temp;
-                    for (int k=0; k<=na; k++) temp.push_back(0); b2.push_back(temp);
+                    vector<double> temp1d;
+                    for (int k=0; k<=na; k++) temp1d.push_back(0); b2.push_back(temp1d);
                 }
                 for (int i=0; i<=nc; i++) {
-                    vector<double> temp;
-                    for (int k=0; k<=na; k++) temp.push_back(0); c0.push_back(temp);
+                    vector<double> temp1d;
+                    for (int k=0; k<=na; k++) temp1d.push_back(0); c0.push_back(temp1d);
                 }
                 for (int i=0; i<=nc; i++) {
                     vector<vector<double>> temp2d;
@@ -1387,20 +1352,20 @@ class Simulation {
                     sap.push_back(temp2d);
                 }
                 for (int i=0; i<=nc; i++) {
-                    vector<double> temp;
-                    for (int k=0; k<=nc; k++) temp.push_back(0); tcp.push_back(temp);
+                    vector<double> temp1d;
+                    for (int k=0; k<=nc; k++) temp1d.push_back(0); tcp.push_back(temp1d);
                 }
                 for (int i=0; i<=na; i++) {
-                    vector<double> temp;
-                    for (int k=0; k<=na; k++) temp.push_back(0); tap.push_back(temp);
+                    vector<double> temp1d;
+                    for (int k=0; k<=na; k++) temp1d.push_back(0); tap.push_back(temp1d);
                 }
                 for (int i=0; i<=nn; i++) {
-                    vector<double> temp;
-                    for (int k=0; k<=nc; k++) temp.push_back(0); lcp.push_back(temp);
+                    vector<double> temp1d;
+                    for (int k=0; k<=nc; k++) temp1d.push_back(0); lcp.push_back(temp1d);
                 }
                 for (int i=0; i<=nn; i++) {
-                    vector<double> temp;
-                    for (int k=0; k<=na; k++) temp.push_back(0); lap.push_back(temp);
+                    vector<double> temp1d;
+                    for (int k=0; k<=na; k++) temp1d.push_back(0); lap.push_back(temp1d);
                 }
                 for (int i=0; i<=nn; i++) {
                     vector<vector<double>> temp2d;
@@ -1489,7 +1454,6 @@ class Simulation {
                         }
                     }
                 }
-
                 for (int i=1; i<=nc-1; i++) {
                     for (int j=i+1; j<=nc; j++) {
                         getline(file, line); stringstream linestream(line); string value;
@@ -1595,8 +1559,8 @@ class Simulation {
                         }
                     }
                 }
-                xip[2][9][1] = -0.0102;
-                xip[2][1][2] = 0.046;
+                xip[2][9][1] = -0.0102e0;
+                xip[2][1][2] = 0.046e0;
             }
             
             file.close();
@@ -1613,14 +1577,14 @@ class Simulation {
             double b[(nc+1)][(na+1)] = { 0 }; double bp[(nc+1)][(na+1)] = { 0 };
             double gc[(nc+1)] = { 0 }; double ga[(na+1)] = { 0 }; double gn[(nn+1)] = { 0 };
 
-            bp0 = 1.2; mh2o = 55.51;
+            bp0 = 1.2e0; mh2o = 55.51e0;
 
             u = 0; z = 0;
             for (int i=1; i<=nc; i++) {
-                u += c[i] * pow(nzc[i], 2); z += c[i] * nzc[i];
+                u = u + c[i] * pow(nzc[i], 2); z = z + c[i] * nzc[i];
             }
             for (int j=1; j<=na; j++) {
-                u += a[j] * pow(nza[j], 2); z += a[j] * nza[j];
+                u = u + a[j] * pow(nza[j], 2); z = z + a[j] * nza[j];
             }
             fi = u / 2; fj = sqrt(fi);
             u = 6 * ap0 * fj;
@@ -1658,22 +1622,14 @@ class Simulation {
             }
             for (int i=1; i<=nc-1; i++) {
                 for (int j=i+1; j<=nc; j++) {
-                    pp[i][j] = fc[i][j]; 
-                    p[i][j] = tcp[i][j] + ec[i][j];
-                    pf[i][j] = p[i][j] + pp[i][j] * fi;
-                    pp[j][i] = pp[i][j]; 
-                    p[j][i] = p[i][j]; 
-                    pf[j][i] = pf[i][j];
+                    pp[i][j] = fc[i][j]; p[i][j] = tcp[i][j] + ec[i][j]; pf[i][j] = p[i][j] + pp[i][j] * fi;
+                    pp[j][i] = pp[i][j]; p[j][i] = p[i][j]; pf[j][i] = pf[i][j];
                 }
             }
             for (int i=1; i<=na-1; i++) {
                 for (int j=i+1; j<=na; j++) {
-                    qp[i][j] = fa[i][j]; 
-                    q[i][j] = tap[i][j] + ea[i][j];
-                    qf[i][j] = q[i][j] + qp[i][j] * fi;
-                    qp[j][i] = qp[i][j]; 
-                    q[j][i] = q[i][j]; 
-                    qf[j][i] = qf[i][j];
+                    qp[i][j] = fa[i][j]; q[i][j] = tap[i][j] + ea[i][j]; qf[i][j] = q[i][j] + qp[i][j] * fi;
+                    qp[j][i] = qp[i][j]; q[j][i] = q[i][j]; qf[j][i] = qf[i][j];
                 }
             }
             w = fj * 12;
@@ -1739,15 +1695,11 @@ class Simulation {
             }
             for (int jj=1; jj<=na; jj++) {
                 u = pow(nza[jj], 2) * f;
-                for (int i=1; i<=nc; i++) {
-                    u += c[i] * (b[i][jj] * 2 + z * cc[i][jj]);
-                }
+                for (int i=1; i<=nc; i++) u += c[i] * (b[i][jj] * 2 + z * cc[i][jj]);
                 for (int i=1; i<=na; i++) {
                     if (i != jj) {
                         v = 0;
-                        for (int j=1; j<=nc; j++) {
-                            v += c[j] * sap[jj][i][j];
-                        }
+                        for (int j=1; j<=nc; j++) v += c[j] * sap[jj][i][j];
                         u += a[i] * (q[jj][i] * 2 + v);
                     }
                 }
@@ -1804,9 +1756,7 @@ class Simulation {
             for (int i=1; i<=na-1; i++) {
                 for (int j=i+1; j<=na; j++) {
                     v = 0;
-                    for (int k=1; k<=nc; k++) {
-                        v += c[k] * sap[i][j][k];
-                    }
+                    for (int k=1; k<=nc; k++) v += c[k] * sap[i][j][k];
                     u += a[i] * a[j] * (qf[i][j] + v);
                 }
             }
@@ -1841,9 +1791,9 @@ class Simulation {
             gact[12] = ga[4]; gact[14] = ga[5]; gact[13] = ga[6];
             gact[24] = ga[7]; gact[19] = ga[8]; gact[20] = ga[9];
             gact[21] = ga[10]; gact[8] = ga[11];
-            gact[10] = aw * aw * pow(gn[1], log(10));
+            gact[10] = aw * aw * pow(gn[1], log(10.e0));
             gact[9] = gn[2]; gact[15] = gn[3];
-            gact[16] = 1; gact[17] = 1;
+            gact[16] = 1.; gact[17] = 1.;
             ndepact = 1;
         }
 
@@ -1920,7 +1870,7 @@ class Simulation {
             winv[3][11] = 1; winv[3][12] = 1; winv[3][0] = -1;
 
             n1 = 3;
-            for (int l=1; k<=nm; k++) {
+            for (int k=1; k<=nm; k++) {
                 if (lmin[k] == 1) {
                     n1 += 1;
                     kinv[n1] = k;
@@ -2066,7 +2016,7 @@ class Simulation {
 
                     if (abs(t4[n4][n4]) > epsilon) {
                         ah2o = pow(10, (tt4[n4] / t4[n4][n4]));
-                        if (ah2o > 1 or ah2o <= 0.02) {
+                        if (ah2o > 1 or ah2o <= 0.01) {
                             kinvariant = -2;
                         } else {
                             kinvariant = n3;
@@ -2087,6 +2037,7 @@ class Simulation {
         }
 
         void stop_simulation() {
+
             exit(0);
         }
 };
