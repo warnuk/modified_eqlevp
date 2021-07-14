@@ -135,10 +135,10 @@ class simulation:
             if self.print_step:
                 file.write(",".join(["print_step", str(self.print_step)]))
                 file.write("\n")
-            if self.output:
+            if self.output != None:
                 file.write(",".join(["output", str(self.output)]))
                 file.write("\n")
-            if self.verbose:
+            if self.verbose != None:
                 file.write(",".join(["verbose", str(self.verbose)]))
                 file.write("\n")
             if self.increment:

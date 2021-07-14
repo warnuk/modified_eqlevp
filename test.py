@@ -30,7 +30,7 @@ if __name__ == "__main__":
                               units='molar', add=['calcite'], 
                               remove=['dolomite','nesquehonite','brucite',
                                       'magnesite','hydromagnesite'],
-                              verbose='0')
+                              verbose=1)
     test.run_simulation()
     
 
