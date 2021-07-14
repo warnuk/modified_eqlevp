@@ -2230,7 +2230,6 @@ class Simulation {
                 hmin = 1000;
                 for (int k=1; k<=nm; k++) {
                     for (int kk=1; kk<=kinvariant; kk++) {
-                        cout << kk << endl;
                         if (k == kinvar[kk] and min[k] > 0) {
                             s = 0;
                             for (int i=1; i<=15; i++) {

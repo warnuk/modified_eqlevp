@@ -29,7 +29,8 @@ if __name__ == "__main__":
                               alk=56.2, pco2=log_pco2, system=system,
                               units='molar', add=['calcite'], 
                               remove=['dolomite','nesquehonite','brucite',
-                                      'magnesite','hydromagnesite'])
+                                      'magnesite','hydromagnesite'],
+                              verbose='0')
     test.run_simulation()
     
 

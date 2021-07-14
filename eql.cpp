@@ -329,9 +329,11 @@ class Simulation {
             }
             if (sc + sa != 0) dca = 200 * abs(sc - sa) / (sc + sa);
             delta = sc - sa;
-            cout << "sum cations = " << sc << endl;
-            cout << "sum of anions = " << sa << endl;
-            cout << "Electrical balance = " << (dca * 100 + 0.5) / 100 << "%" << endl;
+            if (verbose == 1) {
+                cout << "sum cations = " << sc << endl;
+                cout << "sum of anions = " << sa << endl;
+                cout << "Electrical balance = " << (dca * 100 + 0.5) / 100 << "%" << endl;
+            }
             tot[icat] = tot[icat] - delta / 2 / nch[icat];
             tot[iani] = tot[iani] + delta / 2 / (-nch[iani]);
             for (int i=1; i<=12; i++) {
@@ -441,11 +443,13 @@ class Simulation {
                 sa = (molal[6] + molal[7] * 2 + molal[8] + molal[12] + 
                         molal[13] + molal[14] * 2 + molal[19] + molal[20] + 
                         molal[21] * 2 + molal[24] + molal[25]);
-
-                cout << endl;
-                cout << "Sum of cations = " << sc << " corrected for " << aq_S[icat] << endl;
-                cout << "Sum of anions = " << sa << " corrected for " << aq_S[iani] << endl;
-                cout << endl;
+                
+                if (verbose == 1) {
+                    cout << endl;
+                    cout << "Sum of cations = " << sc << " corrected for " << aq_S[icat] << endl;
+                    cout << "Sum of anions = " << sa << " corrected for " << aq_S[iani] << endl;
+                    cout << endl;
+                }
 
                 s = 0;
                 for (int i=1; i<=n; i++) {
@@ -568,11 +572,15 @@ class Simulation {
                         }
 
                         ncompt += 1;
-                        cout << "iteration molalities " << ncompt << endl;
+                        if (verbose == 1){
+                            cout << "iteration molalities " << ncompt << endl;
+                        }
                         if (ncompt >= 100) {
                             for (int i=1; i<=n; i++) {
                                 if (molal[i] + xx[i] / nconv < 0) {
-                                    cout << "the equation set diverges: end of program" << endl;
+                                    if (verbose == 1) {
+                                        cout << "the equation set diverges: end of program" << endl;
+                                    }
                                     stop_simulation();
                                 }
                             }
@@ -600,8 +608,10 @@ class Simulation {
                     for (int i=0; i<=n; i++) {
                         std += molal[i] * atom[i];
                     }
-                    cout << "tdsi = " << stdi << endl;
-                    cout << "tds = " << std << endl;
+                    if (verbose == 1) {
+                        cout << "tdsi = " << stdi << endl;
+                        cout << "tds = " << std << endl;
+                    }
 
                     if (abs(std - stdi) / (std + stdi) * 200 < pkstd) {
                         break;
@@ -766,21 +776,22 @@ class Simulation {
                     cout << endl << endl;
                     cout << setw(18) << " " << setw(18) << "LOG(IAP)" << setw(18) << "LOG(K)" << setw(18) << "BALANCE %" << endl;
                     cout << endl;
-                }
+                
 
-                for (int i=13; i<=n; i++) {
-                    u = 0;
-                    if (ica[i] == 1) {
-                        for (int j=0; j<=n; j++) {
-                            if (act[j] != 0) u += kmat[i][j] * log10(act[j]);
-                        }
-                        v = log10(psc[i-12]);
-                        d = 200 * abs(u - v) / (u + v);
-                        if (i == 13) {
-                            cout << setw(18) << "H2O" << setw(18) << u << setw(18) << v << setw(18) << d << endl;
-                        } else {
-                            zone_S = lower_to_upper(aq_S[i]);
-                            cout << setw(18) << zone_S << setw(18) << u << setw(18) << v << setw(18) << d << endl;
+                    for (int i=13; i<=n; i++) {
+                        u = 0;
+                        if (ica[i] == 1) {
+                            for (int j=0; j<=n; j++) {
+                                if (act[j] != 0) u += kmat[i][j] * log10(act[j]);
+                            }
+                            v = log10(psc[i-12]);
+                            d = 200 * abs(u - v) / (u + v);
+                            if (i == 13) {
+                                cout << setw(18) << "H2O" << setw(18) << u << setw(18) << v << setw(18) << d << endl;
+                            } else {
+                                zone_S = lower_to_upper(aq_S[i]);
+                                cout << setw(18) << zone_S << setw(18) << u << setw(18) << v << setw(18) << d << endl;
+                            }
                         }
                     }
                 }
@@ -1155,7 +1166,11 @@ class Simulation {
                     outfile.close();
                 }
 
-                int result = system("./evp");
+                #ifdef _WIN32
+                    int result = system("evp");
+                #elif defined __APPLE__
+                    int result = system("./evp");
+                #endif
 
 
             STOP: 
