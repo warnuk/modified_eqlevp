@@ -85,7 +85,7 @@ class Simulation {
         string tra_file, log_file, chem_file, event_file, min_file;
         string system, units, miner_S;
         string line, value;
-        ifstream infile; ofstream outfile; ofstream dumpfile;
+        ifstream infile; ofstream outfile;
 
         // declare arrays and vectors
         array<string,n+1> aq_S;
@@ -145,7 +145,7 @@ class Simulation {
             }
 
             // read chemical species thermodynamic data
-            infile.open("aquv.dat");
+            infile.open("resources/aquv.dat");
             for (int i=0; i<=n; i++) {
                 getline(infile, line); stringstream linestream(line);
                 getline(linestream, value, ','); aq_S[i] = trim(value);
@@ -155,7 +155,7 @@ class Simulation {
             infile.close();
 
             // read coefficients of partial derivatives of EVP equation set
-            infile.open("matrice2");
+            infile.open("resources/matrice2");
             for (int i=1; i<=n; i++) {
                 getline(infile, line); stringstream linestream(line);
                 for (int j=1; j<=n; j++) {
@@ -163,11 +163,6 @@ class Simulation {
                 }
             }
             infile.close();
-
-            // // open the log file in append mode
-            // if (print_step > 0 and output != 0) {
-            //     dumpfile.open(log_file, ios::app);
-            // }
 
             // set the increment mode based on user input
             if (xi == 0) {
@@ -203,7 +198,7 @@ class Simulation {
                 outfile.close();
             }
 
-            infile.open("complex3");
+            infile.open("resources/complex3");
             for (int i=1; i<=ncomplex; i++) {
                 getline(infile, line);
                 stringstream linestream(line);
@@ -778,15 +773,15 @@ class Simulation {
                 }
 
                 if (output == 1 and (ncpt == 1 or my_S != my0_S or ncpt % print_step == 0)) {
-                    dumpfile.open(log_file, ios::app);
+                    outfile.open(log_file, ios::app);
                     my_S = ""; q_S = "";
-                    dumpfile << endl;
+                    outfile << endl;
                     if (system == "c") {
-                        dumpfile << setw(24) << " " << setw(42) << "MOLES PREC" << setw(14) << "TESTS" << endl;
+                        outfile << setw(24) << " " << setw(42) << "MOLES PREC" << setw(14) << "TESTS" << endl;
                     } else if (system == "o") {
-                        dumpfile << setw(24) << " " << setw(14) << "MOLES 1 STEP" << setw(28) << "MOLES TOT" << setw(14) << "TESTS" << endl;
+                        outfile << setw(24) << " " << setw(14) << "MOLES 1 STEP" << setw(28) << "MOLES TOT" << setw(14) << "TESTS" << endl;
                     }
-                    dumpfile << endl;
+                    outfile << endl;
 
                     for (int i=1; i<=nm; i++) {
                         if (lmin[i] == 1 or min[i] != 0) {
@@ -804,19 +799,19 @@ class Simulation {
                             u = 200 * abs(pai[i] - psol[i]) / (pai[i] + psol[i]);
 
                             if (system == "o") {
-                                dumpfile << setw(24) << x_S << setw(14) << min[i] << setw(28) << minp[i] << setw(14) << u << endl;
+                                outfile << setw(24) << x_S << setw(14) << min[i] << setw(28) << minp[i] << setw(14) << u << endl;
                             } else {
-                                dumpfile << setw(24) << x_S << setw(42) << min[i] << setw(14) << u << endl;
+                                outfile << setw(24) << x_S << setw(42) << min[i] << setw(14) << u << endl;
                             }
                             my_S += "_" + mineral_S[i];
                         }
                     }
-                    if (my_S == "") dumpfile << "No_minerals" << endl;
-                    dumpfile << endl;
+                    if (my_S == "") outfile << "No_minerals" << endl;
+                    outfile << endl;
 
                     if (ncpt == 1) {
-                        dumpfile << setw(10) << " " << setw(14) << "MOLES" << setw(14) << "MOLALITIES" << setw(14) << "ACT COEFF" << setw(14) << "MOLAL TOT" << setw(14) << "TESTS" << endl;
-                        dumpfile << endl;
+                        outfile << setw(10) << " " << setw(14) << "MOLES" << setw(14) << "MOLALITIES" << setw(14) << "ACT COEFF" << setw(14) << "MOLAL TOT" << setw(14) << "TESTS" << endl;
+                        outfile << endl;
                     }
 
                     for (int i=1; i<=ntot; i++) {
@@ -827,9 +822,9 @@ class Simulation {
                                 for (int j=1; j<=n; j++) {
                                     s += molal[j] * kmat[i][j];
                                 }
-                                dumpfile << setw(10) << aq_S[i] << setw(14) << mol[i] << setw(14) << molal[i] << setw(14) << gact[i] << setw(14) << s << setw(14) << u << endl;
+                                outfile << setw(10) << aq_S[i] << setw(14) << mol[i] << setw(14) << molal[i] << setw(14) << gact[i] << setw(14) << s << setw(14) << u << endl;
                             } else if (i>10) {
-                                dumpfile << setw(10) << aq_S[i] << setw(14) << mol[i] << setw(14) << molal[i] << setw(14) << gact[i] << setw(14) << " " << setw(14) << u << endl;
+                                outfile << setw(10) << aq_S[i] << setw(14) << mol[i] << setw(14) << molal[i] << setw(14) << gact[i] << setw(14) << " " << setw(14) << u << endl;
                             }
                         }
                     }
@@ -841,33 +836,33 @@ class Simulation {
                                 p = p * pow(act[j], kmat[i][j]);
                             }
                             u = 200 * abs(p - psc[i-12]) / (p + psc[i-12]);
-                            dumpfile << setw(10) << aq_S[i] << setw(14) << mol[i] << setw(14) << molal[i] << setw(14) << gact[i] << setw(14) << " " << setw(14) << u << endl;
+                            outfile << setw(10) << aq_S[i] << setw(14) << mol[i] << setw(14) << molal[i] << setw(14) << gact[i] << setw(14) << " " << setw(14) << u << endl;
                         }
                     }
                     pco = log10(act[15] * act[13] / act[11] / psc3 / psc[14]);
                     u = 200 * abs(pco - po) / (pco + po);
-                    dumpfile << setw(10) << aq_S[0] << setw(14) << mol[0] << setw(14) << molal[0] << setw(14) << gact[0] << setw(14) << " " << setw(14) << u << endl;
-                    dumpfile << endl;
-                    dumpfile << tra_file << endl;
-                    dumpfile << "concentration factor     = " << fc << endl;
-                    dumpfile << "ionic strength           = " << fi << endl;
-                    dumpfile << "salinity                 = " << std/(std+1000) << " g/kg" << endl;
-                    dumpfile << "activity of water        = " << act[11] << endl;
-                    dumpfile << "pH                       = " << -log10(act[13]) << endl;
-                    dumpfile << "alkalinity               = " << alk << " eq/kg" << endl;
-                    dumpfile << "water evaporated         = " << mwev << " moles" << endl;
-                    dumpfile << "CO2 exchanged            = " << ctot-ctot0 << " moles" << endl;
-                    dumpfile << "Log PCO2                 = " << pco << endl;
-                    dumpfile << "density                  = " << dens << endl;
-                    dumpfile << "molal/molar factor       = " << ee/1000 << endl;
+                    outfile << setw(10) << aq_S[0] << setw(14) << mol[0] << setw(14) << molal[0] << setw(14) << gact[0] << setw(14) << " " << setw(14) << u << endl;
+                    outfile << endl;
+                    outfile << tra_file << endl;
+                    outfile << "concentration factor     = " << fc << endl;
+                    outfile << "ionic strength           = " << fi << endl;
+                    outfile << "salinity                 = " << std/(std+1000) << " g/kg" << endl;
+                    outfile << "activity of water        = " << act[11] << endl;
+                    outfile << "pH                       = " << -log10(act[13]) << endl;
+                    outfile << "alkalinity               = " << alk << " eq/kg" << endl;
+                    outfile << "water evaporated         = " << mwev << " moles" << endl;
+                    outfile << "CO2 exchanged            = " << ctot-ctot0 << " moles" << endl;
+                    outfile << "Log PCO2                 = " << pco << endl;
+                    outfile << "density                  = " << dens << endl;
+                    outfile << "molal/molar factor       = " << ee/1000 << endl;
                     if (kinvariant == 0) {
-                        dumpfile << "increment (%)            = " << xi * 100 << endl;
+                        outfile << "increment (%)            = " << xi * 100 << endl;
                     } else {
-                        dumpfile << "increment (moles)        = " << xinv << endl;
+                        outfile << "increment (moles)        = " << xinv << endl;
                     }
-                    dumpfile << "number of steps          = " << ncpt << endl;
-                    dumpfile << endl;
-                    dumpfile.close();
+                    outfile << "number of steps          = " << ncpt << endl;
+                    outfile << endl;
+                    outfile.close();
                 }
 
                 if (output == 1) {
@@ -1006,16 +1001,16 @@ class Simulation {
                         }
                     }
                     if (output == 1 and q_S != q0_S) {
-                        dumpfile.open(log_file, ios::app);
-                        dumpfile << endl;
-                        dumpfile << q_S << endl;
+                        outfile.open(log_file, ios::app);
+                        outfile << endl;
+                        outfile << q_S << endl;
                         if (q_S.find("pseudo") != string::npos) {
                             q1_S = "maximum number of munerals allowed by the phase rule = ";
                             q2_S = "number of minerals in equilibrium with the invariant system = ";
-                            dumpfile << q1_S << nbmin << endl;
-                            dumpfile << q2_S << nbmin << endl;
+                            outfile << q1_S << nbmin << endl;
+                            outfile << q2_S << nbmin << endl;
                         }
-                        dumpfile.close();
+                        outfile.close();
 
                         outfile.open(event_file, ios::app);
                             outfile << q_S << " at fc = " << fc << endl;
@@ -1207,7 +1202,7 @@ class Simulation {
 
         void read_transfer() {
             // read stockage
-            infile.open("stockage");
+            infile.open("resources/stockage");
             infile >> tra_file;
             infile.close(); 
 
@@ -1267,7 +1262,7 @@ class Simulation {
             }
 
             {
-                infile.open("coefft4");
+                infile.open("resources/coefft4");
                 getline(infile, line);
                 stringstream linestream(line);
                 string value;
@@ -1787,7 +1782,7 @@ class Simulation {
                     vector<double> temp1d;
                     for (int k=0; k<=nadens; k++) temp1d.push_back(0); bu.push_back(temp1d);
                 }
-                infile.open("densite");
+                infile.open("resources/densite");
                 for (int i=1; i<=5; i++) {
                     for (int j=1; j<=5; j++) {
                         getline(infile, line); stringstream linestream(line);

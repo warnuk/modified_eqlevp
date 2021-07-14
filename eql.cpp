@@ -168,7 +168,7 @@ class Simulation {
             }
 
             // Open and read "aqu.dat"
-            file.open("aqu.dat");
+            file.open("resources/aqu.dat");
             for (int i = 0; i <= n; i++) {
                 getline(file, line);
                 stringstream linestream(line); string value;
@@ -184,7 +184,7 @@ class Simulation {
             }
 
             // Open and read "matrice1"
-            file.open("matrice1");
+            file.open("resources/matrice1");
             for (int i=1; i<=n; i++) {
                 getline(file, line);
                 stringstream linestream(line); string value;
@@ -196,7 +196,7 @@ class Simulation {
             kmat[13][0] = -1; kmat[15][0] = -1; kmat[20][0] = 3; kmat[21][0] = 5;
 
             // Open and read "complex 3"
-            file.open("complex3");
+            file.open("resources/complex3");
             for (int i=1; i<=14; i++) {
                 getline(file, line);
                 stringstream linestream(line); string value;
@@ -215,7 +215,7 @@ class Simulation {
 
             {
                 // Open and read murtf2
-                file.open("murtf2");
+                file.open("resources/murtf2");
                 getline(file, line);
                 stringstream linestream(line); string value;
                 getline(linestream, value, ','); nc = stoi(value);
@@ -241,7 +241,7 @@ class Simulation {
 
             {
                 // Open and read murtf2
-                file.open("murtf2");
+                file.open("resources/murtf2");
 
                 // Ignore the first line
                 getline(file, line);
@@ -339,7 +339,7 @@ class Simulation {
             }
             // Open and read mineral database
             {
-                file.open("murtf3");
+                file.open("resources/murtf3");
                 getline(file, line);
                 stringstream linestream(line); string value;
                 getline(linestream, value, ','); nc = stoi(value);
@@ -365,7 +365,7 @@ class Simulation {
                 }
                 file.close();
             }
-            min_S = "murtf3";
+            min_S = "resources/murtf3";
 
             LOOP500:
                 molal[1] = tot[1]; molal[2] = tot[2]; molal[3] = tot[3];
@@ -1060,8 +1060,8 @@ class Simulation {
                     // clear add_min and rem_min
                     ifstream murtf2;
                     ofstream murtf0;
-                    murtf2.open("murtf2");
-                    murtf0.open("murtf0", ios::trunc);
+                    murtf2.open("resources/murtf2");
+                    murtf0.open("resources/murtf0", ios::trunc);
                     {
                         getline(murtf2, line); 
                         string value; stringstream linestream(line);
@@ -1088,7 +1088,7 @@ class Simulation {
                     murtf2.close();
                     murtf0.close();
 
-                    min_S = "murtf0";
+                    min_S = "resources/murtf0";
 
                     add_min.clear();
                     rem_min.clear();
@@ -1108,7 +1108,7 @@ class Simulation {
                     if (tot[10] != 0) constituant_S += ",si";
                     constituant_S += ",tds";
                     
-                    outfile.open("stockage", ios::trunc);
+                    outfile.open("resources/stockage", ios::trunc);
                     outfile << tra_file;
                     outfile.close();
 
@@ -1308,7 +1308,7 @@ class Simulation {
             h[1] = molal[10]; h[2] = molal[9]; h[3] = molal[15];
 
             {
-            file.open("coefft4");
+            file.open("resources/coefft4");
             
             getline(file, line); stringstream linestream(line); string value;
             getline(linestream, value, ','); nc = stoi(value);
@@ -1806,7 +1806,7 @@ class Simulation {
             double ao[nc+1][na+1] = {0}; double bo[nc+1][na+1] = {0};
             double au[nc+1][na+1] = {0}; double bu[nc+1][na+1] = {0};
 
-            file.open("densite");
+            file.open("resources/densite");
             for (int i=1; i<=5; i++) {
                 for (int j=1; j<=5; j++) {
                     getline(file, line);
