@@ -147,4 +147,8 @@ class simulation:
 
             file.close()
             
-            os.system("./eql")
+            # OS Specific program calls
+            if os.name == 'nt':
+                os.system("eql")
+            elif os.name == 'posix':
+                os.system("./eql")
