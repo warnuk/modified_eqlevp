@@ -1,0 +1,61 @@
+EQL/EVP C++ Version
+(based on the F90 source code from Risacher and Clement, 2001)
+
+The C++ versions of EQL and EVP are designed to speed up the input and computations of 
+modeled solutions from the original F90 programs. Inputs are now passed to the program
+through an input file only (input.dat).
+
+The input structure is as follows:
+
+- Each input gets its own line in the file
+- Specify the input type and then the value(s), separated by commas
+- Order of the inputs doesn't matter, but the inputs must be labeled properly
+
+Possible parameters to pass as inputs:
+label, the label for the simulation and the filename for relavent output files
+temp, temperature in Celcius (default: 25)
+dens, density of solution (default: 1.0)
+ph, pH (default: 7.0)
+na, sodium (default: 0)
+k, potassium (default: 0)
+li, lithium (default: 0)
+ca, calcium (default: 0)
+mg, magnesium (default: 0)
+cl, chloride (default: 0)
+so4, sulfate (default: 0)
+no3, nitrate (default: 0)
+b, boron (default: 0)
+si, silicon (default: 0)
+alk, alkalinity (default: 0)
+pco2, LOG10 (pco2) (default: none, calculated)
+system, closed ('c') or open ('o') system (default: none, must be specified)
+units, output units 'molar' or 'molal' (default: none, must be specified)
+dil, dilution 1 / X (default: 1.0, solution is not diluted)
+add, minerals to be added (default: none, each mineral separated by comma)
+remove, minerals to be removed (default: none, each mineral separated by comma)
+max_sal, maximum salinity endpoint (default: 0, no maximum)
+pkmol, mole iterations limit (default: 0.001)
+pkeq, Newton-Raphson iterations limit (default: 0.0000000000001)
+print_step, interval at which to print solution to screen (default: 1 step)
+output_step, interval at which to store output in output files (default: 1 step)
+output, store outputs -- true (1) or false (0) (default: true)
+verbose, print output to screen -- true (1) or false (0) (default: true)
+increment, evaporation increment in % (default: none, automatic increment)
+
+
+
+EXAMPLE INPUT:
+label,test
+temp,30
+dens,1
+ph,6.55
+na,84.5
+k,3.3
+ca,2.7
+mg,1.3
+cl,39.5
+alk,56.2
+pco2,-2.9208
+system,c
+units,molar
+remove,brucite,dolomite,nesquehonite,magnesite,hydromagnesite

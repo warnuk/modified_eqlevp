@@ -1184,102 +1184,102 @@ class Simulation {
                 getline(file, line);
                 string name, value;
                 stringstream linestream(line);
-                
+        
 
-                getline(linestream, name, ',');
+                getline(linestream, name, ','); name = upper_to_lower(name);
 
                 if (name == "label") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     label = value;
                 } else if (name == "temp") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     temp = stod(value);
                 } else if (name == "dens") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     dens = stod(value);
                 } else if (name == "ph") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     ph = stod(value);
                 } else if (name == "na") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     na = stod(value);
                 } else if (name == "k") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     k = stod(value);
                 } else if (name == "li") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     li = stod(value);
                 } else if (name == "ca") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     ca = stod(value);
                 } else if (name == "mg") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     mg = stod(value);
                 } else if (name == "cl") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     cl = stod(value);
                 } else if (name == "so4") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     so4 = stod(value);
                 } else if (name == "no3") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     no3 = stod(value);
                 } else if (name == "b") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     b = stod(value);
                 } else if (name == "si") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     si = stod(value);
                 } else if (name == "alk") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     alk = stod(value);
                 } else if (name == "pco2") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     pco2 = value;
                 } else if (name == "system") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     syst_S = value;
                 } else if (name == "units") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     output_units = value;
                 } else if (name == "dil") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     dilute = stod(value);
                 } else if (name == "add") {
                     while (linestream.good()) {
                         string substr;
-                        getline(linestream, substr, ',');
+                        getline(linestream, substr, ','); substr = trim(substr);
                         add_min.push_back(lower_to_upper(substr));
                     }     
                 } else if (name == "remove") {
                     while (linestream.good()) {
                         string substr;
-                        getline(linestream, substr, ',');
+                        getline(linestream, substr, ','); substr = trim(substr);
                         rem_min.push_back(lower_to_upper(substr));
                     } 
                 } else if (name == "max_sal") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     max_sal = stod(value);
                 } else if (name == "pkmol") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     pkmol = stod(value);
                 } else if (name == "pkeq") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                         pkeq = stod(value);
                 } else if (name == "print_step") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     print_step = stoi(value);
                 } else if (name == "output_step") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     output_step = stoi(value);
                 } else if (name == "verbose") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     verbose = stoi(value);
                 } else if (name == "output") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     output = stoi(value);
                 } else if (name == "increment") {
-                    getline(linestream, value, ',');
+                    getline(linestream, value, ','); value = trim(value);
                     xi = stod(value) / 100;
                 }
             }
