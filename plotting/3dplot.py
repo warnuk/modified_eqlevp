@@ -32,14 +32,20 @@ def file_detect(directory, filetype):
             files.append(file)
     return(files)
 
+def last_nonzero(arr, axis, invalid_val=-1):
+    mask = arr!=0
+    val = arr.shape[axis] - np.flip(mask, axis=axis).argmax(axis=axis) - 1
+    return np.where(mask.any(axis=axis), val, invalid_val)
+
+def first_nonzero(arr, axis, invalid_val=-1):
+    mask = arr!=0
+    return np.where(mask.any(axis=axis), mask.argmax(axis=axis), invalid_val)
+
 def compile_xyz(simulation_name, system, mineral, first_last, var='sal'):
     
     base = os.path.join(simulation_name, "closed" if system=="c" else "open")
-    
     directories = os.listdir(base)
-    
     X, Y, Z = [], [], []
-    
     for directory in directories:
         if not directory.startswith("."):
             data_dir = os.path.join(base, directory, "output")
@@ -52,24 +58,19 @@ def compile_xyz(simulation_name, system, mineral, first_last, var='sal'):
                 pco2 = float(pco2.split("ppm")[0])
                 
                 df = pd.read_csv(os.path.join(data_dir, file))
-                df[var] = pd.read_csv(os.path.join(data_dir, filename + ".j{}&".format(system)))[var]
-                target = np.nan
-                indexer = np.ones(df.shape[0])
-                for row in range(0, df.shape[0]):
-                    indexer[row] = indexer[row] * (mineral in 
-                                                   df.columns.values[
-                                                       np.nonzero(
-                                                           df.iloc[row,:].values)][1:])
-                subset = df.loc[indexer == 1]
-                subset.shape[0]
-                if subset.shape[0] > 0:
-                    if first_last == 'first':
-                        target = subset.loc[subset['fc'] == subset['fc'].min()][var].values[0]
-                    elif first_last == 'last':
-                        target = subset.loc[subset['fc'] == subset['fc'].max()][var].values[0]
+                if mineral in df.columns.values:
+                    df[var] = pd.read_csv(os.path.join(data_dir, filename + ".j{}&".format(system)))[var]
+        
+                    if first_last == "first":
+                        target_index = first_nonzero(df[mineral].values, 0, invalid_val=-1)
+                    elif first_last == "last":
+                        target_index = last_nonzero(df[mineral].values, 0, invalid_val=-1)
                     else:
-                        raise ValueError('invalid entry for argument \'first_last\'. enter \'first\' or \'last\'')
-                
+                        target_index = -1
+                    target = df[var][target_index] if target_index != -1 else np.nan
+                else:
+                    target = np.nan
+            
                 X.append(temp)
                 Y.append(pco2)
                 Z.append(target)
@@ -79,7 +80,6 @@ def compile_xyz(simulation_name, system, mineral, first_last, var='sal'):
     x.sort(), y.sort()
     x, y = np.meshgrid(x, y)
     z = np.zeros(y.shape)
-
     for i in range(0, z.shape[0]):
         for k in range(0, z.shape[1]):
             z[i][k] = Z[(X == x[i][k]) & (Y == y[i][k])]
@@ -132,7 +132,7 @@ simulation_name = "steamboat-no-dol_071921"
 system = 'c'
 
 # Set the path to the simulation 3D arrays folder
-directory = os.path.join("3d_arrays", simulation_name, system)
+directory = os.path.join("3d_arrays", simulation_name, "closed" if system=='c' else "open")
 
 # load 3D arrays if True, make 3D arrays if False
 if load_existing:
