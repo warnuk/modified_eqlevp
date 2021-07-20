@@ -31,3 +31,5 @@ eqlevp.dSYM/Contents/Resources/DWARF/eqlevp
 *.out
 eqlevp
 *.json
+*.png
+*.npy

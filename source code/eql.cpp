@@ -842,7 +842,7 @@ class Simulation {
                     outfile << endl;
 
                     outfile << "ELECTRICAL BALANCE     = " << dca << "% corrected on " << aq_S[icat] << " and " << aq_S[iani] << endl;
-                    outfile << "TOTAL DISSOLVED SOLITS = " << std << "g/kg(H2O)" << endl;
+                    outfile << "TOTAL DISSOLVED SOLIDS = " << std << "g/kg(H2O)" << endl;
                     outfile << "MOLAL/MOLAR FACTOR     = " << (1000 * dens / (1000 + std)) << endl;
                     outfile << "DENSITY                = " << dens << endl;
                     outfile << "IONIC STRENGTH         = " << fi << endl;
