@@ -47,7 +47,9 @@ def compile_xyz(simulation_name, system, mineral, first_last, var='sal'):
         
             for file in files:
                 filename = file.split(".j{}%".format(system))[0]
-                pco2, temp = filename.split("_")[2:4]
+                water, system, pco2, temp = filename.split("_")
+                temp = float(temp.split("C")[0])
+                pco2 = float(pco2.split("ppm")[0])
                 
                 df = pd.read_csv(os.path.join(data_dir, file))
                 df[var] = pd.read_csv(os.path.join(data_dir, filename + ".j{}&".format(system)))[var]
@@ -68,8 +70,8 @@ def compile_xyz(simulation_name, system, mineral, first_last, var='sal'):
                     else:
                         raise ValueError('invalid entry for argument \'first_last\'. enter \'first\' or \'last\'')
                 
-                X.append(float(temp.split("C")[0]))
-                Y.append(float(pco2.split("ppm")[0]))
+                X.append(temp)
+                Y.append(pco2)
                 Z.append(target)
     
     X, Y, Z = np.array(X), np.array(Y), np.array(Z)
