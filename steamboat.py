@@ -17,21 +17,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # set a base water name for the simulation labels and folders
-water_name = "juniper"
+water_name = "steamboat"
 
 # enter water chemistry
-ph = 7.98
-na = 20.30
-k = 0.05
+ph = 6.55
+na = 84.45
+k = 3.32
 li = None
-ca = 0.07
-mg = 0.01
-cl = 2.62
+ca = 2.74
+mg = 1.28
+cl = 39.49
 so4 = 0
 no3 = None
 b = None
-si = 0.60
-alk = 9.35
+si = 0.4
+alk = 55.03
 
 # add minerals to database
 add = ['calcite']

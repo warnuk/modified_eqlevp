@@ -21,7 +21,7 @@ water_name = "juniper"
 
 # enter water chemistry
 ph = 7.98
-na = 20.30
+na = 20.40
 k = 0.05
 li = None
 ca = 0.07
@@ -30,7 +30,7 @@ cl = 2.62
 so4 = 0
 no3 = None
 b = None
-si = 0.60
+si = 0.6
 alk = 9.35
 
 # add minerals to database
