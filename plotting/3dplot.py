@@ -78,8 +78,8 @@ def compile_xyz(simulation_name, system, mineral, first_last, var='sal'):
     x, y = np.meshgrid(x, y)
     z = np.zeros(y.shape)
 
-    for i in range(0, z.shape[1]):
-        for k in range(0, z.shape[2]):
+    for i in range(0, z.shape[0]):
+        for k in range(0, z.shape[1]):
             z[i][k] = Z[(X == x[i][k]) & (Y == y[i][k])]
     
     return(np.array([x, y, z]))
