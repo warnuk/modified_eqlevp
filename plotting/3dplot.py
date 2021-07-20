@@ -32,9 +32,9 @@ def file_detect(directory, filetype):
             files.append(file)
     return(files)
 
-def compile_xyz(simulation_name, co, mineral, first_last, var='sal'):
+def compile_xyz(simulation_name, system, mineral, first_last, var='sal'):
     
-    base = os.path.join(simulation_name, "closed" if co=="c" else "open")
+    base = os.path.join(simulation_name, "closed" if system=="c" else "open")
     
     directories = os.listdir(base)
     
@@ -43,14 +43,14 @@ def compile_xyz(simulation_name, co, mineral, first_last, var='sal'):
     for directory in directories:
         if not directory.startswith("."):
             data_dir = os.path.join(base, directory, "output")
-            files = file_detect(data_dir, ".j{}%".format(co))
+            files = file_detect(data_dir, ".j{}%".format(system))
         
             for file in files:
-                filename = file.split(".j{}%".format(co))[0]
+                filename = file.split(".j{}%".format(system))[0]
                 pco2, temp = filename.split("_")[2:4]
                 
                 df = pd.read_csv(os.path.join(data_dir, file))
-                df[var] = pd.read_csv(os.path.join(data_dir, filename + ".j{}&".format(co)))[var]
+                df[var] = pd.read_csv(os.path.join(data_dir, filename + ".j{}&".format(system)))[var]
                 target = np.nan
                 indexer = np.ones(df.shape[0])
                 for row in range(0, df.shape[0]):
@@ -78,8 +78,8 @@ def compile_xyz(simulation_name, co, mineral, first_last, var='sal'):
     x, y = np.meshgrid(x, y)
     z = np.zeros(y.shape)
 
-    for i in range(0, z.shape[0]):
-        for k in range(0, z.shape[1]):
+    for i in range(0, z.shape[1]):
+        for k in range(0, z.shape[2]):
             z[i][k] = Z[(X == x[i][k]) & (Y == y[i][k])]
     
     return(np.array([x, y, z]))
@@ -127,7 +127,7 @@ def kernel_mean(array):
 # Change these
 load_existing = False
 simulation_name = "steamboat-no-dol_071921"
-system = "c"
+system = 'c'
 
 # Set the path to the simulation 3D arrays folder
 directory = os.path.join("3d_arrays", simulation_name, system)
