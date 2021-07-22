@@ -33,3 +33,5 @@ eqlevp
 *.json
 *.png
 *.npy
+*.exe
+input.dat

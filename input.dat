@@ -1,5 +1,5 @@
-label,steamboat-no-dol_c_2000ppm_50C
-temp,50
+label,steamboat-no-dol_c_800ppm_13C
+temp,13
 dens,1
 ph,6.55
 na,84.45
@@ -8,7 +8,7 @@ ca,2.74
 mg,1.28
 cl,39.49
 alk,66.05
-pco2,-2.6989700043360187
+pco2,-3.0969100130080562
 system,c
 units,molal
 add,calcite
