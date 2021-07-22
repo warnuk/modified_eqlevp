@@ -30,7 +30,7 @@ cl = 39.49
 so4 = 0
 no3 = None
 b = None
-si = 0.4
+si = 0.
 alk = 55.03
 
 # add minerals to database

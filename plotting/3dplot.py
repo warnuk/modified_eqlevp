@@ -18,6 +18,7 @@ import os
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.io import savemat
 from mpl_toolkits.mplot3d import Axes3D
 
 def file_detect(directory, filetype):
@@ -128,7 +129,8 @@ def kernel_mean(array):
 
 # Change these
 load_existing = False
-simulation_name = "steamboat-no-dol_071921"
+plot = False
+simulation_name = "steamboat_072121"
 system = 'c'
 
 # Set the path to the simulation 3D arrays folder
@@ -151,47 +153,56 @@ else:
 
     trona = compile_xyz(simulation_name, system, "TRONA", "first", "sal")
     np.save(os.path.join(directory, "trona"), trona)
+    savemat(os.path.join(directory, "trona.mat"), dict(x=trona[0], y=trona[1], z=trona[2]))
 
     halite = compile_xyz(simulation_name, system, "HALITE", "first", "sal")
     np.save(os.path.join(directory, "halite"), halite)
+    savemat(os.path.join(directory, "halite.mat"), dict(x=halite[0], y=halite[1], z=halite[2]))
 
     calcite = compile_xyz(simulation_name, system, "CALCITE", "first", "sal")
     np.save(os.path.join(directory, "calcite"), calcite)
+    savemat(os.path.join(directory, "calcite.mat"), dict(x=calcite[0], y=calcite[1], z=calcite[2]))
 
     gaylussite = compile_xyz(simulation_name, system, "GAYLUSSITE", "first", "sal")
     np.save(os.path.join(directory, "gaylussite"), gaylussite)
+    savemat(os.path.join(directory, "gaylussite.mat"), dict(x=gaylussite[0], y=gaylussite[1], z=gaylussite[2]))
 
     pirssonite = compile_xyz(simulation_name, system, "PIRSSONITE", "first", "sal")
     np.save(os.path.join(directory, "pirssonite"), pirssonite)
+    savemat(os.path.join(directory, "pirssonite.mat"), dict(x=pirssonite[0], y=pirssonite[1], z=pirssonite[2]))
     
     northupite = compile_xyz(simulation_name, system, "NORTHUPITE", "first", "sal")
     np.save(os.path.join(directory, "northupite"), northupite)
+    savemat(os.path.join(directory, "northupite.mat"), dict(x=northupite[0], y=northupite[1], z=northupite[2]))
 
     nahcolite = compile_xyz(simulation_name, system, "NAHCOLITE", "first", "sal")
     np.save(os.path.join(directory, "nahcolite"), nahcolite)
+    savemat(os.path.join(directory, "nahcolite.mat"), dict(x=nahcolite[0], y=nahcolite[1], z=nahcolite[2]))
 
     natron = compile_xyz(simulation_name, system, "NATRON", "first", "sal")
     np.save(os.path.join(directory, "natron"), natron)
+    savemat(os.path.join(directory, "natron.mat"), dict(x=natron[0], y=natron[1], z=natron[2]))
 
-halite = kernel_mean(halite)
-trona = kernel_mean(trona)
-gaylussite = kernel_mean(gaylussite)
-northupite = kernel_mean(northupite)
-pirssonite = kernel_mean(pirssonite)
-calcite = kernel_mean(calcite)
+if plot:
+    halite = kernel_mean(halite)
+    trona = kernel_mean(trona)
+    gaylussite = kernel_mean(gaylussite)
+    northupite = kernel_mean(northupite)
+    pirssonite = kernel_mean(pirssonite)
+    calcite = kernel_mean(calcite)
 
-# Make plot figure and 3D axis
-fig = plt.figure()
-ax = plt.axes(projection='3d')
+    # Make plot figure and 3D axis
+    fig = plt.figure()
+    ax = plt.axes(projection='3d')
 
-h = ax.plot_surface(halite[0], halite[1], halite[2], color='pink', alpha=0.75,label='Halite')
-t = ax.plot_surface(trona[0], trona[1], trona[2], color='black', alpha=0.75,label='Trona')
-g = ax.plot_surface(gaylussite[0], gaylussite[1], gaylussite[2], color='yellow', alpha=0.75, label='Gaylussite')
-p = ax.plot_surface(pirssonite[0], pirssonite[1], pirssonite[2], color='green', alpha=0.75, label='Pirssonite')
-cc = ax.plot_surface(calcite[0], calcite[1], calcite[2], color='blue',alpha=0.75, label='Calcite')
-no = ax.plot_surface(northupite[0], northupite[1], northupite[2], color='gray',alpha=0.75, label='Northupite')
-#nah = ax.plot_surface(nahcolite[0], nahcolite[1], nahcolite[2], color='red',alpha=0.75, label='Nahcolite')
-#nat = ax.plot_surface(natron[0], natron[1], natron[2], color='brown',alpha=0.75, label='Natron')
+    h = ax.plot_surface(halite[0], halite[1], halite[2], color='pink', alpha=0.75,label='Halite')
+    t = ax.plot_surface(trona[0], trona[1], trona[2], color='black', alpha=0.75,label='Trona')
+    g = ax.plot_surface(gaylussite[0], gaylussite[1], gaylussite[2], color='yellow', alpha=0.75, label='Gaylussite')
+    p = ax.plot_surface(pirssonite[0], pirssonite[1], pirssonite[2], color='green', alpha=0.75, label='Pirssonite')
+    cc = ax.plot_surface(calcite[0], calcite[1], calcite[2], color='blue',alpha=0.75, label='Calcite')
+    no = ax.plot_surface(northupite[0], northupite[1], northupite[2], color='gray',alpha=0.75, label='Northupite')
+    #nah = ax.plot_surface(nahcolite[0], nahcolite[1], nahcolite[2], color='red',alpha=0.75, label='Nahcolite')
+    #nat = ax.plot_surface(natron[0], natron[1], natron[2], color='brown',alpha=0.75, label='Natron')
 
-plt.show()
+    plt.show()
 
